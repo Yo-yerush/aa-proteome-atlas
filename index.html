@@ -1,0 +1,1000 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Explore amino-acid docking preferences across the Arabidopsis proteome."
+    />
+    <title>AA Proteome Atlas</title>
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="css/styles.css?v=ligand-pose-choice-73" />
+  </head>
+  <body>
+    <div class="loading-screen" id="loading-screen" role="status" aria-live="polite">
+      <div class="loader-mark" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <p class="loading-title">Loading atlas…</p>
+      <div class="loading-progress-wrap" title="Progress follows completed loading steps, not download size or remaining time.">
+        <progress id="atlas-loading-progress" max="100" value="0" aria-label="Atlas loading progress"></progress>
+        <span id="atlas-loading-percent" aria-hidden="true">0%</span>
+      </div>
+    </div>
+
+    <header class="topbar">
+      <a class="brand" href="#explorer" aria-label="AA Proteome Atlas home">
+        <svg class="brand-mark" viewBox="0 0 48 42" aria-hidden="true">
+          <path class="brand-receptor" fill-rule="evenodd" d="M9 7.5h9.5L24 15l-5.5 7.5H9L3.5 15 9 7.5Zm1.25 2.7h6.9l3.3 4.8-3.3 4.8h-6.9L6.95 15l3.3-4.8Z" />
+          <path class="brand-linked-hex" d="M24 20h9l5 7-5 7h-9l-5-7 5-7Z" />
+          <path class="brand-accent-hex" d="M34 2h8l4.5 6.5L42 15h-8l-4.5-6.5L34 2Z" />
+          <circle class="brand-receptor-notch" cx="21.8" cy="10.5" r="5" />
+          <circle class="brand-ligand" cx="22.35" cy="9.95" r="4.25" />
+        </svg>
+        <span>
+          <strong>AA Proteome</strong>
+          <small>Interaction Atlas</small>
+        </span>
+      </a>
+
+      <nav class="primary-nav" aria-label="Main navigation">
+        <button class="nav-link active" data-view="explorer" data-testid="nav-explorer">
+          Explorer
+        </button>
+        <button class="nav-link" data-view="protein" data-testid="nav-protein">
+          Protein profile
+        </button>
+        <button class="nav-link" data-view="matrix" data-testid="nav-matrix">
+          AA matrix
+        </button>
+        <button class="nav-link" data-view="compare">Compare AAs</button>
+        <button class="nav-link" data-view="overlap">Top-hit overlap</button>
+        <button class="nav-link" data-view="go" data-testid="nav-go">GO analysis</button>
+        <button class="nav-link" data-view="control-qc" data-testid="nav-control-qc">Control QC</button>
+        <button class="nav-link" data-view="statistics">Statistics</button>
+        <button class="nav-link" data-view="methods" data-testid="nav-methods">
+          Methods
+        </button>
+      </nav>
+
+      <div class="release-badge">
+        <span class="status-dot"></span>
+        <span><strong>Arabidopsis atlas</strong><small id="release-summary">20 amino acids</small></span>
+      </div>
+    </header>
+
+    <main>
+      <section class="view active" id="view-explorer" data-view-panel="explorer">
+        <div class="hero shell">
+          <div class="hero-copy">
+            <p class="eyebrow">Arabidopsis thaliana · Proteome-wide docking</p>
+            <h1>Find the pockets where <em>amino acids fit.</em></h1>
+            <p class="hero-lede">
+              Search proteins, compare ligand preferences, and prioritize selective
+              pockets across 20 amino acids.
+            </p>
+          </div>
+        </div>
+
+        <div class="workspace shell">
+          <section class="filter-panel" aria-labelledby="filter-heading">
+            <div class="filter-panel-title">
+              <div>
+                <p class="section-kicker">Live query</p>
+                <h2 id="filter-heading">Refine the proteome</h2>
+              </div>
+              <button class="text-button" type="button" id="reset-filters" data-testid="reset-filters">
+                Reset filters
+              </button>
+            </div>
+
+            <div class="filter-grid">
+              <label class="field target-aa-field">
+                <span>Target amino acid</span>
+                <select id="aa-select" data-testid="aa-select"></select>
+              </label>
+
+              <fieldset class="field top-field">
+                <legend>Proteome tier</legend>
+                <div class="segmented" id="top-filter">
+                  <button class="active" type="button" data-top="100">All</button>
+                  <button type="button" data-top="1">Top 1%</button>
+                  <button type="button" data-top="5">Top 5%</button>
+                  <button type="button" data-top="10">Top 10%</button>
+                </div>
+              </fieldset>
+
+              <label class="field ranking-field">
+                <span>Ranking score</span>
+                <select id="metric-select" data-testid="metric-select">
+                  <option value="vina_sfct_combined">Combined 80%</option>
+                  <option value="vina_sfct_combined_50" selected>Combined 50%</option>
+                  <option value="vina_affinity">AutoDock Vina</option>
+                  <option value="sfct_score">OnionNet-SFCT</option>
+                </select>
+              </label>
+
+              <label class="field p2rank-field">
+                <span>P2Rank probability ≥</span>
+                <span class="number-control">
+                  <input id="p2rank-filter" data-testid="p2rank-filter" type="number" min="0" max="1" step="0.05" value="0.7" />
+                  <small>0–1</small>
+                </span>
+              </label>
+
+              <label class="field plddt-field">
+                <span>Pocket mean pLDDT ≥</span>
+                <span class="number-control">
+                  <input id="plddt-filter" data-testid="plddt-filter" type="number" min="0" max="100" step="5" value="90" />
+                  <small>0–100</small>
+                </span>
+              </label>
+            </div>
+
+            <div class="specificity-row" aria-label="Amino-acid specificity filters">
+              <div class="specificity-intro">
+                <span class="specificity-icon">◎</span>
+                <div>
+                  <div class="specificity-heading"><strong>Specificity filters</strong><label class="stereo-checkbox" id="stereo-control-filter" hidden><input id="stereo-preference-filter" data-testid="stereo-preference-filter" type="checkbox" /><span id="stereo-filter-title">L&gt;D</span></label></div>
+                  <small>Prioritize proteins predicted to prefer the target AA.</small>
+                </div>
+              </div>
+              <label class="field compact-field">
+                <span>Target AA rank ≤</span>
+                <input id="aa-rank-filter" data-testid="aa-rank-filter" type="number" min="1" max="20" step="1" value="20" />
+              </label>
+              <label class="field compact-field">
+                <span>Median selectivity Δ ≥</span>
+                <input id="delta-filter" data-testid="delta-filter" type="number" step="0.05" placeholder="Any" />
+              </label>
+              <label class="field compact-field">
+                <span>Competitive AAs ≤</span>
+                <input id="competitor-filter" data-testid="competitor-filter" type="number" min="0" max="19" step="1" value="19" />
+              </label>
+            </div>
+
+            <div class="active-query" id="active-query" aria-live="polite"></div>
+          </section>
+
+          <section class="metric-strip" aria-label="Filtered dataset summary">
+            <article class="metric-card">
+              <span>Proteins</span>
+              <strong id="metric-proteins">—</strong>
+              <small id="metric-protein-note">matching filters</small>
+            </article>
+            <article class="metric-card">
+              <span>Pockets</span>
+              <strong id="metric-pockets">—</strong>
+              <small id="metric-pocket-note">available for target AA</small>
+            </article>
+            <article class="metric-card">
+              <span>Median score</span>
+              <strong id="metric-median">—</strong>
+              <small id="metric-label">combined</small>
+            </article>
+            <article class="metric-card">
+              <span>Median selectivity</span>
+              <strong id="metric-selectivity">—</strong>
+              <small>target vs available other AAs</small>
+            </article>
+          </section>
+
+          <div class="explorer-grid">
+            <section class="panel results-panel" aria-labelledby="results-heading">
+              <header class="panel-header results-header">
+                <div class="results-heading">
+                  <p class="section-kicker">Ranked candidates</p>
+                  <h2 id="results-heading">Protein hits</h2>
+                </div>
+                <label class="field results-search">
+                  <span>Protein or gene</span>
+                  <span class="input-wrap">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+                    <input
+                      id="protein-search"
+                      data-testid="protein-search"
+                      type="search"
+                      placeholder="UniProt, Araport ID, gene symbol…"
+                      autocomplete="off"
+                    />
+                  </span>
+                </label>
+                <div class="panel-actions">
+                  <div class="pocket-mode-toggle" id="pocket-mode-toggle" role="group" aria-label="Pocket display mode">
+                    <button class="active" type="button" data-pocket-mode="best">Best pocket</button>
+                    <button type="button" data-pocket-mode="all">All pockets</button>
+                  </div>
+                  <span class="row-count" id="row-count">— rows</span>
+                  <details class="download-menu" id="table-download-menu">
+                    <summary class="button secondary" data-testid="table-download-menu">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg>
+                      Download <span class="download-chevron">▾</span>
+                    </summary>
+                    <div class="download-options" role="menu">
+                      <button type="button" id="download-tsv" data-testid="download-tsv" role="menuitem"><strong>TSV</strong><small>Tab-separated values</small></button>
+                      <button type="button" id="download-csv" data-testid="download-csv" role="menuitem"><strong>CSV</strong><small>Comma-separated values</small></button>
+                    </div>
+                  </details>
+                </div>
+              </header>
+
+              <div class="table-wrap">
+                <table class="data-table" id="results-table">
+                  <thead>
+                    <tr>
+                      <th data-sort-header="protein" aria-sort="none"><button class="sort-button" type="button" data-sort="protein">Protein <span>↕</span></button></th>
+                      <th data-sort-header="pocket" aria-sort="none"><button class="sort-button" type="button" data-sort="pocket">Pocket <span>↕</span></button></th>
+                      <th class="numeric" data-sort-header="score" aria-sort="none"><button class="sort-button" type="button" data-sort="score">Score <span>↕</span></button></th>
+                      <th class="numeric qphi-header" data-sort-header="qphi_kT" aria-sort="none" title="Charge-weighted receptor potential for Vina pose 1, not necessarily the SFCT/Combined-selected pose. Negative is favorable and positive is unfavorable in the fixed receptor field; not binding free energy. Click to sort; unavailable values stay last."><button class="sort-button" type="button" data-sort="qphi_kT">qφ (kT) <span>↕</span></button><small>Vina pose 1</small></th>
+                      <th class="numeric" data-sort-header="aa_rank" aria-sort="none"><button class="sort-button" type="button" data-sort="aa_rank">AA rank <span>↕</span></button></th>
+                      <th class="numeric" data-sort-header="competitors" aria-sort="none"><button class="sort-button" type="button" data-sort="competitors">Competitive AAs <span>↕</span></button></th>
+                      <th class="numeric" data-sort-header="percentile" aria-sort="none"><button class="sort-button" type="button" data-sort="percentile">Top <span>↕</span></button></th>
+                      <th class="numeric" data-sort-header="p2rank" aria-sort="none"><button class="sort-button" type="button" data-sort="p2rank">P2Rank <span>↕</span></button></th>
+                      <th class="numeric" data-sort-header="plddt" aria-sort="none"><button class="sort-button" type="button" data-sort="plddt">pLDDT <span>↕</span></button></th>
+                      <th class="numeric" data-sort-header="delta" aria-sort="none"><button class="sort-button" type="button" data-sort="delta">Δ median <span>↕</span></button></th>
+                      <th class="numeric" data-sort-header="z" aria-sort="none"><button class="sort-button" type="button" data-sort="z">Z <span>↕</span></button></th>
+                      <th class="numeric" id="stereo-header" data-sort-header="stereo" aria-sort="none"><button class="sort-button" type="button" data-sort="stereo">L/D Δ <span>↕</span></button></th>
+                      <th><span class="sr-only">Open</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="results-body"></tbody>
+                </table>
+                <div class="empty-state" id="empty-state" hidden>
+                  <div>∅</div>
+                  <h3>No proteins match</h3>
+                  <p>Try lowering the confidence thresholds or clearing your search.</p>
+                </div>
+              </div>
+              <div class="explorer-qphi-notice">
+                <small id="explorer-qphi-status" role="status" aria-live="polite" hidden></small>
+                <button id="explorer-qphi-retry" type="button" hidden>Retry qφ (kT)</button>
+              </div>
+              <nav class="table-pagination" id="results-pagination" aria-label="Explorer table pages">
+                <label class="rows-per-page">
+                  <span>Rows per page</span>
+                  <select id="rows-per-page" data-testid="rows-per-page" aria-label="Rows per page">
+                    <option value="10" selected>10</option>
+                    <option value="20">20</option>
+                    <option value="30">30</option>
+                    <option value="40">40</option>
+                    <option value="50">50</option>
+                    <option value="60">60</option>
+                    <option value="70">70</option>
+                    <option value="80">80</option>
+                    <option value="90">90</option>
+                    <option value="100">100</option>
+                  </select>
+                </label>
+                <div class="pagination-controls" id="results-page-controls" hidden>
+                  <button type="button" id="previous-results-page">← Previous</button>
+                  <span id="results-page-status">Page 1 of 1</span>
+                  <button type="button" id="next-results-page">Next →</button>
+                </div>
+              </nav>
+            </section>
+
+            <aside class="panel distribution-panel" aria-labelledby="distribution-heading">
+              <header class="panel-header compact">
+                <div>
+                  <p class="section-kicker">Selected amino acid</p>
+                  <h2 id="distribution-heading">Score distribution</h2>
+                </div>
+                <span class="legend-pill"><i></i><span id="distribution-aa">ALA</span></span>
+              </header>
+              <div class="distribution-controls">
+                <label class="field">
+                  <span>Protein set</span>
+                  <select id="distribution-source" data-testid="distribution-source" aria-describedby="distribution-cutoff-note">
+                    <option value="all">All proteins</option>
+                    <option value="filtered">Table-filtered list</option>
+                  </select>
+                </label>
+                <span id="distribution-summary" class="distribution-summary"></span>
+              </div>
+              <div id="histogram" class="chart" role="img" aria-label="Score distribution histogram"></div>
+              <div class="distribution-cutoffs" id="distribution-cutoffs" aria-label="Score cutoffs after P2Rank and pLDDT filters"></div>
+              <small id="distribution-cutoff-note" class="distribution-cutoff-note" role="note"><strong>Note:</strong> Top-tier cutoffs use all proteins passing the P2Rank and pLDDT filters in both views.</small>
+              <div class="distribution-stats" id="distribution-stats"></div>
+              <div class="chart-note">
+                <span>← stronger predicted fit</span>
+                <span>weaker →</span>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-protein" data-view-panel="protein" hidden>
+        <div class="page-heading protein-page-heading shell">
+          <div class="protein-heading-copy">
+            <button class="back-link" type="button" data-go-view="explorer">← Back to explorer</button>
+            <p class="eyebrow">20-amino-acid profile</p>
+            <div class="protein-title-row">
+              <h1 id="protein-title">Select a protein</h1>
+              <div class="protein-annotation-summary" id="protein-annotation-summary">
+                <strong id="profile-entry-name">UniProt annotation</strong>
+                <span id="profile-gene-names">Gene names will appear here.</span>
+                <small id="profile-araport">Araport ID</small>
+                <button class="gene-info-button" id="profile-gene-info" type="button" aria-haspopup="dialog" aria-controls="gene-description-dialog" aria-label="Gene descriptions" title="View TAIR gene descriptions" hidden>i</button>
+              </div>
+            </div>
+            <p id="protein-subtitle">Choose a row in the explorer to inspect every ligand and pocket.</p>
+          </div>
+          <div class="profile-heading-actions">
+            <form class="field profile-protein-search" id="profile-protein-search-form" role="search" aria-label="Find a protein profile">
+              <label class="sr-only" for="profile-protein-search">Protein or gene</label>
+              <div class="input-wrap">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+                <input id="profile-protein-search" type="search" list="profile-protein-options" placeholder="Protein / gene / TAIR ID" autocomplete="off" spellcheck="false" aria-describedby="profile-protein-search-status" />
+                <button class="profile-search-submit" type="submit" aria-label="Open matching protein profile" title="Open protein profile">→</button>
+              </div>
+              <datalist id="profile-protein-options"></datalist>
+              <span class="sr-only" id="profile-protein-search-status" role="status" aria-live="polite">Type a UniProt ID, gene symbol or TAIR/Araport ID, then choose a suggestion or press Enter.</span>
+            </form>
+            <label class="inline-select">Target AA <select id="profile-aa-select"></select></label>
+            <button class="button primary" type="button" id="download-profile">Download profile</button>
+          </div>
+        </div>
+
+        <div class="profile-workspace shell" id="profile-content">
+          <p class="analysis-note" id="profile-qc-note"></p>
+          <section class="profile-summary" aria-label="Protein summary">
+            <article><span>Target score</span><strong id="profile-score">—</strong><small id="profile-score-label">combined</small></article>
+            <article><span>AA rank</span><strong id="profile-rank">—</strong><small id="profile-rank-note">among 20 amino acids</small></article>
+            <article><span>Δ to median</span><strong id="profile-delta">—</strong><small id="profile-delta-note">successful other AAs</small></article>
+            <article><span>Selectivity Z</span><strong id="profile-z">—</strong><small>positive favors target</small></article>
+            <article><span id="profile-pocket-label">Best pocket</span><strong id="profile-pocket">—</strong><small id="profile-confidence">P2Rank —</small></article>
+            <article id="profile-stereo-card" class="dmet-summary" hidden><span id="profile-stereo-label">D-AA control Δ</span><strong id="profile-stereo-delta">—</strong><small id="profile-stereo-note">positive favors L-AA</small></article>
+          </section>
+
+          <div class="profile-grid">
+            <section class="panel aa-profile-panel">
+              <header class="panel-header profile-chart-header">
+                <div>
+                  <p class="section-kicker">Within-protein comparison</p>
+                  <h2 id="profile-comparison-heading">Full 20-AA profile</h2>
+                  <button class="profile-pocket-reset" type="button" id="profile-pocket-reset" hidden>Use each AA’s best pocket</button>
+                </div>
+                <div class="profile-chart-key">
+                  <label class="profile-normalize-control" id="profile-normalize-control" title="Normalize the selected Value type separately for each AA">
+                    <input type="checkbox" id="profile-normalize" data-testid="profile-normalize" />
+                    <span>AA-normalized Z-score</span>
+                  </label>
+                  <label class="plot-value-control">Value type
+                    <select id="profile-value-select" data-testid="profile-value-select">
+                      <option value="raw_combined">Combined 80%</option>
+                      <option value="raw_combined_50" selected>Combined 50%</option>
+                      <option value="raw_vina">Vina score</option>
+                      <option value="raw_sfct">SFCT score</option>
+                      <option value="percentile">Percentile - Combined 80%</option>
+                      <option value="percentile_50">Percentile - Combined 50%</option>
+                    </select>
+                  </label>
+                  <label class="plot-order-control">Order
+                    <select id="profile-order-select" data-testid="profile-order-select">
+                      <option value="score_asc" selected>Score</option>
+                      <option value="aa">Canonical AA</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="profile-chart-toolbar">
+                  <span id="profile-threshold-key"><i></i>Competitive-AA threshold</span>
+                  <div class="profile-download-actions">
+                    <span class="direction-note">Lower is better ↓</span>
+                    <details class="download-menu plot-download-menu" id="plot-download-menu">
+                      <summary class="button secondary plot-download-button" id="download-profile-plot" data-testid="download-profile-plot">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg>
+                        Plot <span class="download-chevron">▾</span>
+                      </summary>
+                      <div class="download-options" role="menu" aria-label="Plot download formats">
+                        <button type="button" id="download-profile-png" role="menuitem"><strong>PNG image</strong><small>High-resolution raster image</small></button>
+                        <button type="button" id="download-profile-svg" role="menuitem"><strong>SVG image</strong><small>Scalable vector graphic</small></button>
+                      </div>
+                    </details>
+                    <details class="download-menu" id="profile-table-download-menu">
+                      <summary class="button secondary plot-download-button">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg>
+                        Table <span class="download-chevron">▾</span>
+                      </summary>
+                      <div class="download-options" role="menu" aria-label="AA profile table download formats">
+                        <button type="button" id="download-profile-table-tsv" role="menuitem"><strong>TSV</strong><small>Tab-separated values</small></button>
+                        <button type="button" id="download-profile-table-csv" role="menuitem"><strong>CSV</strong><small>Comma-separated values</small></button>
+                      </div>
+                    </details>
+                  </div>
+                </div>
+              </header>
+              <div id="profile-chart" class="chart profile-chart" role="img" aria-label="Full amino-acid score profile"></div>
+              <p id="profile-normalization-note" class="analysis-note analysis-inset" hidden></p>
+              <div class="profile-tier-legend" aria-label="Proteome percentile color legend">
+                <span><i class="tier-swatch tier-top1"></i>Top 1%</span>
+                <span><i class="tier-swatch tier-top5"></i>Top 5%</span>
+                <span><i class="tier-swatch tier-top10"></i>Top 10%</span>
+                <span><i class="tier-swatch tier-outside"></i>Outside top 10%</span>
+                <span><i class="target-swatch"></i>Target AA</span>
+                <span id="profile-top5-key" hidden><i class="profile-cutoff-swatch"></i>AA-specific Top 5% cutoff</span>
+              </div>
+              <div class="profile-table-wrap">
+                <table class="data-table compact-table">
+                  <thead><tr><th>Rank</th><th>AA</th><th class="numeric">Vina</th><th class="numeric">SFCT</th><th class="numeric">Combined 80%</th><th class="numeric">Combined 50%</th><th>Pocket</th></tr></thead>
+                  <tbody id="profile-aa-body"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <aside class="panel pocket-detail-panel">
+              <header class="panel-header compact">
+                <div><p class="section-kicker">Selected pocket</p><h2 id="pocket-detail-title">Pocket details</h2></div>
+                <span class="rank-badge" id="pocket-detail-rank">—</span>
+              </header>
+              <div class="structure-viewer-block">
+                <div class="structure-style-controls">
+                  <span>Protein</span>
+                  <div class="structure-style-toggle" role="group" aria-label="Protein representation">
+                    <button type="button" data-protein-style="cartoon" aria-pressed="true">Cartoon</button>
+                    <button type="button" data-protein-style="surface" aria-pressed="false" title="Semi-transparent protein surface">Surface</button>
+                  </div>
+                  <label class="structure-ligand-toggle" title="Show/hide the green pocket sticks independently of protein coloring"><input type="checkbox" id="show-pocket-sticks" /> Show sticks</label>
+                  <small id="structure-style-status" role="status" aria-live="polite" hidden></small>
+                </div>
+                <div class="structure-color-controls">
+                  <label class="structure-color-select" for="protein-color">Color
+                    <select id="protein-color">
+                      <option value="plddt">pLDDT</option>
+                      <option value="charge">Residue charge</option>
+                      <option value="polarity">Residue polarity</option>
+                      <option value="none">None</option>
+                    </select>
+                  </label>
+                  <label class="structure-ligand-toggle" title="Override the selected protein coloring with green at pocket residues; sticks are independent"><input type="checkbox" id="highlight-pocket-residues" checked /> Green pocket override</label>
+                  <small id="structure-charge-note" hidden>Approximate residue classes, not calculated electrostatics. Histidine is pH-dependent; gray includes other and unknown residues.</small>
+                  <small id="structure-polarity-note" hidden>Qualitative grouping, including charged residues as polar. GLY/CYS/TYR are polar in this scheme; gray means unclassified. Hover legend labels for residue lists; see Methods.</small>
+                  <small id="structure-color-status" role="status" aria-live="polite" hidden></small>
+                </div>
+                <div class="pocket-visual" id="structure-viewer-frame">
+                  <div id="molstar-viewer" aria-label="Interactive AlphaFold protein in cartoon or surface view with selectable residue colors, optional green pocket highlighting and sticks, a gold P2Rank cloud, and the exported Vina ligand as ball-and-stick"></div>
+                  <div class="structure-viewer-overlay" id="structure-viewer-overlay" role="status" aria-live="polite">
+                    <span class="structure-spinner" aria-hidden="true"></span>
+                    <strong id="structure-viewer-message">Preparing 3D structure</strong>
+                    <small id="structure-viewer-detail">The AlphaFold model is loaded only for the selected protein.</small>
+                  </div>
+                </div>
+                <div id="structure-protein-legend" class="structure-confidence-legend" role="group" tabindex="0" aria-label="Protein coloring and pocket legend">
+                  <strong>pLDDT</strong>
+                  <span><i class="confidence-very-high"></i>≥90</span>
+                  <span><i class="confidence-high"></i>70–90</span>
+                  <span><i class="confidence-low"></i>50–70</span>
+                  <span><i class="confidence-very-low"></i>&lt;50</span>
+                  <span class="pocket-highlight-key"><i class="confidence-pocket"></i>Selected pocket</span>
+                </div>
+                <div class="structure-ligand-controls structure-cloud-controls">
+                  <label class="structure-ligand-toggle"><input type="checkbox" id="show-pocket-cloud" checked aria-describedby="structure-cloud-status" /> Show pocket cloud</label>
+                  <label class="structure-color-select structure-point-color" for="pocket-point-color">Pocket-point color
+                    <select id="pocket-point-color" aria-describedby="pocket-potential-status">
+                      <option value="gold">Gold</option>
+                      <option value="potential">Electrostatic potential</option>
+                    </select>
+                  </label>
+                  <span class="structure-cloud-key" id="structure-cloud-legend" hidden><i></i>P2Rank points</span>
+                  <span class="pocket-potential-legend" id="pocket-potential-legend" hidden aria-label="Receptor electrostatic potential: red −5, white 0, blue +5 kT/e" title="Receptor potential at P2Rank points; colors saturate beyond ±5 kT/e.">
+                    <span class="pocket-potential-gradient" aria-hidden="true"></span>
+                    <span class="pocket-potential-ticks"><span>−5</span><span>0</span><span>+5 kT/e</span></span>
+                  </span>
+                  <span class="pocket-potential-missing-key" id="pocket-potential-missing-key" hidden><i></i>No validated value</span>
+                  <small id="structure-cloud-status" role="status" aria-live="polite">Select a pocket to view its P2Rank points.</small>
+                  <small id="pocket-potential-status" role="status" aria-live="polite" hidden></small>
+                  <button type="button" class="pocket-potential-retry" id="pocket-potential-retry" hidden>Retry potential</button>
+                </div>
+                <div class="structure-ligand-controls">
+                  <label class="structure-ligand-toggle"><input type="checkbox" id="show-pocket-ligand" checked aria-describedby="structure-ligand-note" /> Show ligand</label>
+                  <label class="structure-color-select structure-ligand-pose" for="ligand-pose-select">Ligand pose
+                    <select id="ligand-pose-select" aria-describedby="structure-ligand-note" disabled>
+                      <option value="auto" selected>Auto (follow Value type)</option>
+                      <option value="vina" id="ligand-vina-pose-option">Vina-best (MODEL 1)</option>
+                      <option value="sfct" id="ligand-sfct-pose-option">Saved SFCT/Combined - unavailable</option>
+                    </select>
+                  </label>
+                  <span class="structure-ligand-legend" id="structure-ligand-legend" aria-label="Ligand atom colors" hidden>
+                    <span><i class="ligand-carbon"></i>C</span><span><i class="ligand-nitrogen"></i>N</span><span><i class="ligand-oxygen"></i>O</span><span><i class="ligand-sulfur"></i>S</span>
+                  </span>
+                  <small id="structure-ligand-status" role="status" aria-live="polite">Select a pocket to view its docked ligand.</small>
+                  <small id="structure-ligand-note">Auto follows Value type; SFCT/Combined use the saved selection. qφ (kT) remains Vina MODEL 1. Hydrogens hidden.</small>
+                </div>
+                <div class="structure-source-row">
+                  <span id="structure-pocket-status">P2Rank pocket residues</span>
+                  <span class="structure-source-links">
+                    <a id="alphafold-entry-link" href="https://alphafold.ebi.ac.uk/" target="_blank" rel="noopener noreferrer">AlphaFold DB ↗</a>
+                    <a href="https://molstar.org/" target="_blank" rel="noopener noreferrer">Mol* viewer ↗</a>
+                  </span>
+                </div>
+              </div>
+              <dl class="detail-list" id="pocket-detail-list"></dl>
+              <div class="residue-block">
+                <span>Residues</span>
+                <p id="pocket-residues">—</p>
+              </div>
+            </aside>
+          </div>
+
+          <section class="panel pockets-panel">
+            <header class="panel-header">
+              <div><p class="section-kicker">Pocket-level results</p><h2 id="pockets-heading">All retained pockets</h2></div>
+              <span class="row-count" id="pocket-count">— pockets</span>
+            </header>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Pocket</th><th class="numeric">P2Rank rank</th><th class="numeric">Probability</th><th class="numeric">Mean pLDDT</th><th class="numeric">Vina</th><th class="numeric">SFCT</th><th class="numeric">Combined 80%</th><th class="numeric">Combined 50%</th><th>Center (x, y, z)</th><th></th></tr></thead>
+                <tbody id="pockets-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-matrix" data-view-panel="matrix" hidden>
+        <div class="page-heading matrix-heading shell">
+          <div>
+            <p class="eyebrow">Proteome-wide similarity</p>
+            <h1>AA × AA correlation matrix</h1>
+            <p>Spearman correlation of protein rankings for every ligand pair. Higher values indicate similar proteome-wide preference patterns.</p>
+          </div>
+          <div class="matrix-legend" aria-label="Correlation color legend">
+            <span>−1</span><i></i><span>0</span><i></i><span>+1</span>
+          </div>
+        </div>
+        <div class="shell matrix-workspace">
+          <section class="panel matrix-panel">
+            <header class="panel-header">
+              <div><p class="section-kicker">Rank-based comparison</p><h2 id="matrix-title">Combined-score correlations</h2></div>
+              <label class="inline-select">Score <select id="matrix-metric-select">
+                <option value="vina_sfct_combined">Combined 80%</option>
+                  <option value="vina_sfct_combined_50" selected>Combined 50%</option>
+                <option value="vina_affinity">AutoDock Vina</option>
+                <option value="sfct_score">OnionNet-SFCT</option>
+              </select></label>
+            </header>
+            <p class="analysis-note analysis-inset" id="matrix-qc-note"></p>
+            <div class="matrix-scroll">
+              <div id="correlation-matrix" class="correlation-matrix" role="img" aria-label="20-amino-acid Spearman correlation heatmap"></div>
+            </div>
+            <div class="matrix-footnote">
+              <span><i class="swatch low"></i>Distinct rankings</span>
+              <span><i class="swatch mid"></i>Weak relationship</span>
+              <span><i class="swatch high"></i>Similar rankings</span>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-compare" data-view-panel="compare" hidden>
+        <div class="page-heading shell"><div><p class="eyebrow">Two-amino-acid comparison</p><h1>Which AA scores better?</h1><p>Compare scores on proteins with successful, quality-passing results for both AAs.</p></div></div>
+        <div class="shell analysis-workspace" id="compare-workspace">
+          <div class="compare-overview">
+            <section class="panel analysis-controls compare-settings" aria-label="Pairwise comparison controls">
+              <h2>Comparison settings</h2>
+              <div class="analysis-filter-grid" id="compare-controls"></div>
+              <div class="compare-notes">
+                <p class="analysis-note">Quality filters apply before selecting the best pocket independently for each AA. The two pockets may differ.</p>
+                <p class="analysis-note">Δ = score(Y) − score(X): positive favors X; negative favors Y. Lower scores are better.</p>
+              </div>
+            </section>
+            <section class="panel analysis-chart-panel compare-plot-panel">
+              <header class="panel-header"><h2>Paired scores</h2><span id="compare-correlations" class="analysis-note"></span></header>
+              <div id="compare-scatter" class="analysis-chart"></div>
+            </section>
+          </div>
+          <div id="compare-summary" class="analysis-summary" aria-live="polite"></div>
+          <section class="panel">
+            <header class="panel-header analysis-table-header"><h2>Pairwise candidates</h2><div class="analysis-table-filters" id="compare-table-controls"></div><button class="button secondary" id="compare-download" type="button">Download TSV</button></header>
+            <p class="analysis-note analysis-inset" id="compare-list-note"></p>
+            <div class="table-wrap"><table class="data-table analysis-table"><thead id="compare-head"></thead><tbody id="compare-body"></tbody></table></div>
+            <nav id="compare-pagination" class="table-pagination" aria-label="Pairwise comparison pages"></nav>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-overlap" data-view-panel="overlap" hidden>
+        <div class="page-heading shell"><div><p class="eyebrow">Shared and distinct candidates</p><h1>Top-hit overlap</h1><p>Find proteins shared by top-ranked AA lists, or unique to one list.</p></div></div>
+        <div class="shell analysis-workspace" id="overlap-workspace">
+          <section class="panel analysis-controls" aria-label="Top-hit overlap controls">
+            <div class="analysis-filter-grid" id="overlap-controls"></div>
+            <fieldset class="aa-checks"><legend>Amino acids to compare (at least two)</legend><div id="overlap-aas"></div></fieldset>
+            <p class="analysis-note">Each AA is ranked independently after QC. Top-tier membership uses rank percentile; score ties are ordered by UniProt ID. “Only” means only in that top-hit list, not proven exclusive binding. Missing AA results are marked separately.</p>
+          </section>
+          <div id="overlap-summary" class="analysis-summary" aria-live="polite"></div>
+          <div class="analysis-two-up">
+            <section class="panel analysis-chart-panel"><header class="panel-header"><h2 id="overlap-plot-title">Set intersections</h2></header><div id="overlap-plot" class="analysis-chart"></div><p class="analysis-note analysis-inset" id="overlap-plot-note"></p></section>
+            <section class="panel"><header class="panel-header"><h2>Pairwise top-hit similarity</h2></header><div id="overlap-matrix" class="table-wrap overlap-matrix"></div><p class="analysis-note analysis-inset">Jaccard overlap = shared top-hit proteins / union of the two top-hit lists. Hover over a cell for counts. This is different from ranking correlation.</p></section>
+          </div>
+          <section class="panel">
+            <header class="panel-header analysis-table-header"><h2>Top-hit proteins</h2><div id="overlap-table-controls" class="analysis-table-filters"></div><button class="button secondary" id="overlap-download" type="button">Download TSV</button></header>
+            <p class="analysis-note analysis-inset" id="overlap-list-note"></p>
+            <div class="table-wrap"><table class="data-table analysis-table"><thead id="overlap-head"></thead><tbody id="overlap-body"></tbody></table></div>
+            <nav id="overlap-pagination" class="table-pagination" aria-label="Overlap result pages"></nav>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-control-qc" data-view-panel="control-qc" hidden>
+        <div class="page-heading shell"><div><p class="eyebrow">Experimental positive controls</p><h1>Control QC</h1><p>Evaluate known AA–protein recovery and predicted-pocket site coverage, independently of Statistics and Explorer.</p></div></div>
+        <div class="shell analysis-workspace" id="control-qc-workspace">
+          <section class="panel control-qc-panel" id="control-qc-panel" aria-labelledby="control-qc-heading">
+            <header class="panel-header"><div><p class="section-kicker">Experimental positive controls</p><h2 id="control-qc-heading">Known AA–protein recovery</h2></div><button type="button" class="button secondary" id="control-qc-download" disabled>Download control QC TSV</button></header>
+            <div class="control-qc-controls">
+              <label class="field"><span>Control amino acids</span><select id="control-qc-aa"><option value="ALL">All control AAs</option></select></label>
+              <label class="field"><span>Pocket selection</span><select id="control-qc-pocketMode"><option value="best" selected>Best-scoring pocket</option><option value="matched">Control-matched pocket</option></select></label>
+              <label class="field"><span>Recovery denominator</span><select id="control-qc-denominator"><option value="eligible">Eligible for all four scores</option><option value="all">All known controls</option></select></label>
+              <label class="field"><span>P2Rank probability ≥</span><input id="control-qc-p2" type="number" min="0" max="1" step="0.05" value="0.7" /></label>
+              <label class="field"><span>Pocket mean pLDDT ≥</span><input id="control-qc-plddt" type="number" min="0" max="100" step="5" value="90" /></label>
+              <label class="field"><span>Site-overlap threshold</span><select id="control-qc-overlap"><option value="any">At least one residue</option><option value="25">At least 25%</option><option value="50" selected>At least 50%</option><option value="75">At least 75%</option><option value="100">All residues (100%)</option></select></label>
+            </div>
+            <p class="analysis-note analysis-inset">Pocket selection applies to the recovery curves, tier summary, site coverage and downloads. Best-scoring chooses each metric’s best quality-passing pocket. Control-matched uses one predicted pocket matching the experimental residues for all four scores, even when another pocket scores better. The control list has no predicted pocket IDs: matching uses the largest residue overlap above the threshold, independently of docking scores. Unmatched sites or unavailable scores remain missing; there is no fallback to the best pocket.</p>
+            <p class="analysis-note analysis-inset" id="control-qc-status" role="status">Open Control QC to load the experimental controls.</p>
+            <button class="text-button control-qc-retry" id="control-qc-retry" type="button" hidden>Retry loading controls</button>
+            <div id="control-qc-results" hidden>
+              <div class="control-qc-grid">
+                <div class="control-qc-chart-column"><div id="control-qc-chart" class="control-qc-chart"></div><p class="analysis-note analysis-inset" id="control-qc-curve-note"></p></div>
+                <div class="control-qc-summary-column">
+                  <h3>Recovery at top proteome tiers</h3>
+                  <div class="table-wrap"><table class="data-table control-qc-summary-table"><thead><tr><th>Score</th><th>Top 1%</th><th>Top 5%</th><th>Top 10%</th></tr></thead><tbody id="control-qc-summary"></tbody></table></div>
+                  <p class="analysis-note" id="control-qc-coverage"></p>
+                  <section class="control-qc-pocket" aria-labelledby="control-qc-pocket-heading">
+                    <h3 id="control-qc-pocket-heading">Analyzed-pocket site recovery</h3>
+                    <div id="control-qc-pocket-summary" aria-live="polite"></div>
+                    <p class="analysis-note">Overlap of the actual pocket used for each QC score with the experimental site. This is not ligand-pose validation or standalone P2Rank sensitivity. Only retained successful-result pockets are available; missing scores and unsupported residue mappings remain unknown.</p>
+                  </section>
+                </div>
+              </div>
+              <section class="control-qc-audit" aria-labelledby="control-qc-stereo-heading">
+                <h3 id="control-qc-stereo-heading">L versus D · known positive controls</h3>
+                <div class="table-wrap"><table class="data-table control-qc-summary-table"><thead><tr><th>Score</th><th>L preferred / paired</th><th>D preferred / paired</th><th>Tied</th><th>Missing pair</th><th>Median D − L</th></tr></thead><tbody id="control-qc-stereo-summary"></tbody></table></div>
+                <p class="analysis-note" id="control-qc-stereo-note"></p>
+              </section>
+              <section class="control-qc-audit" aria-labelledby="control-qc-table-heading"><h3 id="control-qc-table-heading">Inspect individual controls and missing results</h3>
+                <p class="analysis-note" id="control-qc-table-note" role="status"></p>
+                <p class="analysis-note">Click a column header to sort; click again to reverse. Missing values stay last. Analyzed-site coverage can be sorted by Vina, SFCT or either Combined weight; Control-site match sorts by overlap. PDB IDs open their RCSB structure pages. Percentiles use the full quality-passing per-AA proteome (lower is better); each score column shows the analyzed pocket and score. Downloads follow the table order.</p>
+                <div class="table-wrap"><table class="data-table analysis-table"><thead id="control-qc-head"><tr><th>Protein</th><th>PDB ID</th><th>AA</th><th>Vina percentile</th><th>SFCT percentile</th><th>Combined 80% percentile</th><th>Combined 50% percentile</th><th>Docking coverage</th><th>Analyzed-site coverage</th><th>Control-site match</th><th><span class="sr-only">Protein profile</span></th></tr></thead><tbody id="control-qc-body"></tbody></table></div>
+              </section>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-statistics" data-view-panel="statistics" hidden>
+        <div class="page-heading shell"><div><p class="eyebrow">Proteome-level QC & distributions</p><h1>Statistics</h1><p>Inspect the dataset as a whole. These controls are independent of Explorer search, tiers and specificity filters.</p></div></div>
+        <div class="shell analysis-workspace" id="statistics-workspace">
+          <p id="statistics-status" class="analysis-status" role="status" hidden>Calculating proteome statistics… Pooled all-pocket summaries may take a few moments.</p>
+          <section class="panel analysis-controls" aria-label="Statistics controls"><div id="statistics-controls" class="analysis-filter-grid"></div><p class="analysis-note" id="statistics-population-note"></p></section>
+          <div id="statistics-summary" class="analysis-summary" aria-live="polite"></div>
+          <section class="panel"><header class="panel-header"><h2>Score summaries by AA</h2><button class="button secondary" id="statistics-download" type="button">Download summary TSV</button></header><div class="table-wrap"><table class="data-table analysis-table"><thead><tr><th>AA</th><th>Proteins</th><th>Score observations</th><th>Mean</th><th>SD</th><th>Median</th><th>Q1</th><th>Q3</th><th>Top 1% cutoff</th><th>Top 5% cutoff</th><th>Top 10% cutoff</th></tr></thead><tbody id="statistics-aa-body"></tbody></table></div><p class="analysis-note analysis-inset">SD is the population standard deviation. Top-tier cutoffs always use one best QC-passing pocket per protein, including when “All pockets” is selected. Missing results are excluded, not replaced with zeros.</p></section>
+          <div class="analysis-two-up" id="statistics-distributions"></div>
+          <div class="statistics-correlation-grid">
+            <section class="panel"><header class="panel-header"><h2>Score & quality correlations</h2></header><div class="table-wrap"><table class="data-table analysis-table"><thead><tr><th>Variables</th><th>Paired observations</th><th>Pearson r</th><th>Spearman ρ</th></tr></thead><tbody id="statistics-correlation-body"></tbody></table></div><p class="analysis-note analysis-inset">Only finite, paired observations contribute. Score/quality comparisons use the same selected pocket row for both variables. L/D comparisons use independent best QC-passing pockets and are shown for any selected AA with a loaded D control. Correlations are descriptive, not evidence of binding.</p></section>
+            <section class="panel analysis-chart-panel"><header class="panel-header"><h2>Correlation plot</h2><label class="inline-select">Variables <select id="statistics-scatter-select"></select></label></header><div id="statistics-scatter" class="analysis-chart"></div><p class="analysis-note analysis-inset" id="statistics-scatter-note"></p></section>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-go" data-view-panel="go" hidden>
+        <div class="page-heading shell"><div><p class="eyebrow">Functional annotation & enrichment</p><h1>GO analysis</h1><p>Find Gene Ontology terms overrepresented among your selected amino-acid docking hits.</p></div></div>
+        <div class="shell analysis-workspace" id="go-workspace" aria-busy="false">
+          <section class="panel analysis-controls" aria-label="GO protein selection">
+            <div class="filter-panel-title"><div><p class="section-kicker">Protein selection</p><div class="specificity-heading"><h2>Define the GO analysis</h2><label class="stereo-checkbox" id="go-stereo-control" hidden><input id="go-requireLPreference" type="checkbox" /><span>L&gt;D</span></label></div></div><button class="text-button" id="go-use-explorer" type="button">Use Explorer settings</button></div>
+            <div class="filter-grid go-filter-grid">
+              <label class="field target-aa-field"><span>Target amino acid</span><select id="go-aa"></select></label>
+              <label class="field top-field"><span>Proteome tier</span><select id="go-top"><option value="1">Top 1%</option><option value="5" selected>Top 5%</option><option value="10">Top 10%</option><option value="20">Top 20%</option><option value="30">Top 30%</option><option value="40">Top 40%</option><option value="50">Top 50%</option><option value="60">Top 60%</option><option value="70">Top 70%</option><option value="80">Top 80%</option><option value="90">Top 90%</option><option value="100">Top 100%</option></select></label>
+              <label class="field ranking-field"><span>Ranking score</span><select id="go-metric"></select></label>
+              <label class="field p2rank-field"><span>P2Rank probability ≥</span><input id="go-p2rank" type="number" min="0" max="1" step="0.05" value="0.7" /></label>
+              <label class="field plddt-field"><span>Pocket mean pLDDT ≥</span><input id="go-plddt" type="number" min="0" max="100" step="5" value="90" /></label>
+              <label class="field go-competitors-field"><span>Competitive AAs ≤</span><input id="go-maxCompetitors" type="number" min="0" max="19" step="1" value="19" title="Maximum competitive other AAs. 19 means unrestricted; lower limits require an available comparison. Filters selected proteins, not the GO background." /></label>
+              <label class="field go-background-field"><span>Background</span><select id="go-background" title="Parameter-filtered: same P2Rank and pLDDT filters, without tier, Competitive AAs or L&gt;D restrictions. Total: all proteins with a successful finite target-AA score, without quality filters."><option value="filtered" selected>Parameter-filtered</option><option value="total">Total (target AA)</option></select></label>
+              <label class="field go-aspect-field go-accent-field"><span>GO aspect</span><select id="go-aspect"><option value="BP">Biological process</option><option value="MF">Molecular function</option><option value="CC">Cellular component</option><option value="ALL">All three aspects</option></select></label>
+              <label class="field go-fdr-field go-accent-field"><span>FDR threshold</span><input id="go-fdr" type="number" min="0" max="1" step="0.01" value="0.05" required /></label>
+            </div>
+            <p class="analysis-note">Protein selection matches Explorer’s Best pocket mode, including L&gt;D when enabled. Quality filters apply first; percentile tiers then use each AA’s best QC-passing score per protein and the QC-qualified protein population. Parameter-filtered background uses the same P2Rank/pLDDT filters, without tier, Competitive AAs or L&gt;D restrictions. Total background uses every protein with a successful finite score for the target AA, without quality filters—not all proteins in the annotation file. Selected hits always retain their quality, tier, Competitive AAs and optional L&gt;D filters. Changing background recalculates enrichment and FDR; GO aspect and FDR threshold only filter the term view. Explorer search and other specificity filters do not apply here.</p>
+          </section>
+          <p class="analysis-status" id="go-status" role="status" hidden>Loading GO annotations…</p>
+          <section class="panel go-error" id="go-error" role="alert" hidden><h2>GO annotations could not load</h2><p id="go-error-message"></p><button class="button secondary" id="go-retry" type="button">Retry</button><p class="analysis-note">Other tabs remain available. Check that the GO file is included in the published site.</p></section>
+          <div id="go-results" class="go-results" hidden>
+            <div class="analysis-summary" id="go-summary" aria-live="polite"></div>
+            <p class="analysis-note go-warning" id="go-warning" role="status" hidden></p>
+            <div class="go-overview-grid">
+              <section class="panel">
+                <header class="panel-header"><h2>Annotation coverage</h2><button class="button secondary" id="go-download-background" type="button">Background TSV</button></header>
+                <div class="table-wrap"><table class="data-table go-coverage-table"><thead><tr><th>GO aspect</th><th>Selected</th><th>Background</th></tr></thead><tbody id="go-coverage-body"></tbody></table></div>
+                <p class="analysis-note analysis-inset">Each test uses proteins with at least one annotation in its GO aspect. Selected k/n and background K/N use those aspect-specific denominators. Missing annotations are unknown, not evidence of absence. Each UniProt ID is counted once per term.</p>
+              </section>
+              <section class="panel go-chart-panel">
+                <header class="panel-header"><h2>Enriched GO terms</h2><div class="go-protein-actions"><span class="analysis-note" id="go-chart-fdr">FDR ≤ 0.05</span><details class="download-menu plot-download-menu" id="go-plot-download-menu" hidden><summary class="button secondary plot-download-button">Download plot <span class="download-chevron">▾</span></summary><div class="download-options" role="menu" aria-label="GO plot download formats"><button type="button" id="go-download-plot-png" role="menuitem"><strong>PNG image</strong><small>High-resolution raster image</small></button><button type="button" id="go-download-plot-svg" role="menuitem"><strong>SVG image</strong><small>Scalable vector graphic</small></button></div></details></div></header>
+                <div id="go-chart" class="go-chart"></div><p class="analysis-note analysis-inset">Up to 12 enriched terms from the current term view, ranked by adjusted significance. Bar length: fold enrichment. Darker purple: higher −log10(FDR), meaning a smaller FDR. Hover for the complete term and counts.</p>
+              </section>
+            </div>
+            <section class="panel">
+              <header class="panel-header go-term-header"><h2>GO terms</h2>
+                <div class="go-term-filters">
+                  <label class="field"><span>GO term or ID</span><input id="go-term-search" type="search" placeholder="GO:0008150 or term name…" /></label>
+                  <label class="go-significance-filter"><input id="go-significant" type="checkbox" checked /> <span id="go-significant-label">FDR ≤ 0.05 only</span></label>
+                  <details class="download-menu" id="go-download-menu"><summary class="button secondary">Download <span class="download-chevron">▾</span></summary><div class="download-options" role="menu" aria-label="GO term download formats"><button type="button" id="go-download-tsv" role="menuitem"><strong>TSV</strong><small>Tab-separated values</small></button><button type="button" id="go-download-csv" role="menuitem"><strong>CSV</strong><small>Comma-separated values</small></button></div></details>
+                </div>
+              </header>
+              <div class="table-wrap"><table class="data-table go-term-table"><thead id="go-term-head"></thead><tbody id="go-term-body"></tbody></table></div>
+              <nav id="go-pagination" class="table-pagination" aria-label="GO term pages"></nav>
+              <p class="analysis-note analysis-inset" id="go-term-note"></p>
+            </section>
+            <section class="panel" id="go-proteins-panel">
+              <header class="panel-header"><h2 id="go-protein-heading">Selected proteins</h2><div class="go-protein-actions"><button class="text-button" id="go-clear-term" type="button" hidden>All selected proteins</button><button class="button secondary" id="go-download-proteins" type="button">Download TSV</button></div></header>
+              <p class="analysis-note analysis-inset" id="go-protein-note"></p>
+              <div class="table-wrap"><table class="data-table"><thead><tr><th>Protein</th><th>Score</th><th>Proteome percentile</th><th>Competitive AAs</th><th>Pocket</th><th>P2Rank</th><th>pLDDT</th><th>GO terms</th><th><span class="sr-only">Protein profile</span></th></tr></thead><tbody id="go-protein-body"></tbody></table></div>
+              <nav id="go-protein-pagination" class="table-pagination" aria-label="GO protein pages"></nav>
+            </section>
+            <p class="analysis-note" id="go-source-note"></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-methods" data-view-panel="methods" hidden>
+        <div class="page-heading shell">
+          <div>
+            <p class="eyebrow">Methods & interpretation</p>
+            <h1>From structure to ranked pocket</h1>
+            <p>A transparent summary of the computational workflow and Arabidopsis docking results represented in this atlas.</p>
+          </div>
+        </div>
+        <div class="shell methods-layout">
+          <section class="pipeline" aria-label="Analysis pipeline">
+            <article><span>01</span><div><strong>AlphaFold proteome</strong><small>Predicted protein structures</small></div></article>
+            <i>→</i>
+            <article><span>02</span><div><strong>P2Rank</strong><small>Candidate pocket detection</small></div></article>
+            <i>→</i>
+            <article><span>03</span><div><strong>Pocket QC</strong><small>pLDDT and probability filters</small></div></article>
+            <i>→</i>
+            <article><span>04</span><div><strong>AutoDock Vina</strong><small>Pose generation and scoring</small></div></article>
+            <i>→</i>
+            <article><span>05</span><div><strong>OnionNet-SFCT</strong><small>Deep-learning rescoring</small></div></article>
+          </section>
+          <div class="methods-cards">
+            <section class="panel method-card">
+              <p class="section-kicker">Pocket retention</p><h2>Quality thresholds</h2>
+              <p class="analysis-note">App filters default to P2Rank probability ≥ 0.7 and pocket mean pLDDT ≥ 90 in Explorer, Compare AAs, Top-hit overlap and Statistics. The pipeline retention thresholds below describe the input dataset and are unchanged.</p>
+              <dl><div><dt>Mean pocket pLDDT</dt><dd>≥ 70</dd></div><div><dt>Residues with pLDDT ≥ 70</dt><dd>≥ 80%</dd></div><div><dt>P2Rank probability</dt><dd>≥ 0.20*</dd></div><div><dt>Maximum pockets</dt><dd>10 / protein</dd></div></dl>
+              <small>*Or rank ≤ 3 with probability ≥ 0.05.</small>
+            </section>
+            <section class="panel method-card warning-card">
+              <p class="section-kicker">Responsible interpretation</p><h2>Computational evidence</h2>
+              <p>Docking predicts structural compatibility, not confirmed binding. Scores are most useful for relative ranking; experimental validation is required for biological claims.</p>
+              <div class="warning-chip">Arabidopsis docking results · computational predictions</div>
+            </section>
+          </div>
+
+          <div class="methods-docs">
+            <section class="panel method-section">
+              <header class="method-section-header"><div><p class="section-kicker">Comparison, overlap & statistics</p><h2>Independent proteome analyses</h2></div></header>
+              <div class="formula-grid">
+                <article class="formula-card"><strong>Compare AAs</strong><p>Each AA uses its own lowest-scoring successful pocket after the comparison tab’s P2Rank/pLDDT filters. Only proteins with finite scores for both selected AAs are paired; missing results are not zeros. The two best pockets can differ. Table search, preference and minimum Δ affect the candidate list and its download, not the paired-score overview. Selecting the same AA in the other selector swaps the pair.</p><code>Δ(X vs Y) = score(Y) − score(X)</code><small>Positive favors X; negative favors Y. Raw score differences compare predictions, not measured affinities.</small></article>
+                <article class="formula-card"><strong>Top-hit membership & overlap</strong><p>For each selected canonical AA, apply QC first, retain one best pocket per protein, then sort by score (ties by UniProt ID). Rank percentile is 100 × (rank − 1) / (N − 1), or 0 for one protein. A top-tier set includes percentiles ≤ 1, 5 or 10. This can yield more than the nominal fraction in small datasets. “Only” refers to top-list membership, not exclusive binding. Missing or QC-failing results remain explicitly unknown.</p><code>Jaccard(A, B) = |A ∩ B| / |A ∪ B|</code><small>Empty unions are undefined. Venn counts are exact, but circle areas are schematic. UpSet bars represent exact membership patterns; up to 20 largest patterns are drawn and all patterns remain available in the table selector.</small></article>
+                <article class="formula-card"><strong>Competitive AAs in overlap results</strong><p>The column reports x/20: the number of all 20 canonical AA top-hit lists containing the protein, using the overlap tab’s score, top-tier and P2Rank/pLDDT settings. Each AA is ranked independently after QC and best-pocket selection. For example, 8/20 means the protein is a top hit for eight AAs, even if only ALA and LEU are selected for overlap. The selected AAs still determine the table’s protein list and intersections. D-AA controls are excluded.</p><small>This is predicted top-hit membership, not proof of binding, and differs from Explorer’s score-tolerance-based Competitive AAs metric. Missing/QC-failing results remain unknown: the denominator stays 20, with incomplete eligible coverage noted beneath the count. Hover for qualifying AA names and coverage. Downloads include the all-AA count, denominator, eligible coverage and AA names, plus separate selected-AA membership counts.</small></article>
+                <article class="formula-card"><strong>Statistics population</strong><p>Statistics uses its own AA, score, QC and best/all-pocket controls, independent of Explorer. All-AA mode pools the 20 canonical AAs, excluding D-AA controls; repeated proteins across AAs are not independent observations. Protein counts are unique UniProt IDs; pocket counts are unique protein × pocket IDs across selected AAs. The pockets-per-protein distribution counts distinct retained pockets for each eligible protein × AA, excluding missing/failed pairs rather than assigning zero.</p><small>Score and quality distributions follow the observation-unit selector. Percentiles, top-tier cutoffs, median selectivity and L/D statistics always use one independent best QC-passing pocket per protein × AA. Selectivity uses available canonical AAs and requires at least one comparator.</small></article>
+                <article class="formula-card"><strong>Summary statistics & correlations</strong><p>Mean and population SD use all finite observations in the displayed population; quartiles use linear interpolation. Score/quality correlations pair values on the same selected pocket row. Pearson measures linear association; Spearman uses average ranks for ties. Both exclude non-finite pairs and are undefined for fewer than two pairs or zero variance. L/D pairs use independent best pockets after QC.</p><small>Histograms use all finite observations (40 bins, with integer bins where suitable). The Statistics correlation plot draws every finite paired observation after the selected QC filters, AA selection and observation unit, without a display cap. Overlapping points can share the same position. Compare AAs retains its 2,000-point display sample; correlation coefficients use all pairs in both tabs. These summaries describe the retained docking results, not excluded pipeline failures or experimental binding.</small></article>
+              </div>
+            </section>
+            <section class="panel method-section">
+              <header class="method-section-header">
+                <div><p class="section-kicker">Score definitions</p><h2>Scores, direction and best-pocket rule</h2></div>
+                <span class="method-direction">Lower is better ↓</span>
+              </header>
+              <div class="formula-grid three-up">
+                <article class="formula-card"><strong>Vina score</strong><p>Independent best Vina pose score within this pocket, stored as <code>vina_affinity</code> in the compact L/D files (originally <code>vina_&lt;aa&gt;_affinity</code>). More negative values indicate a stronger predicted fit. It may describe a different pose from the SFCT result.</p></article>
+                <article class="formula-card"><strong>SFCT score</strong><p>OnionNet-SFCT value <code>sfct_score</code> for the pose selected upstream by Combined 80%. It is not an independently selected minimum-SFCT pose. Lower is treated as better.</p></article>
+                <article class="formula-card"><strong>Combined weights</strong><p><strong>Combined 80%</strong> keeps the supplied <code>vina_sfct_combined</code> score (80% SFCT), including its original precision.</p><code>0.2 × origin_score + 0.8 × sfct_score</code><p><strong>Combined 50%</strong> is calculated in the app from the same saved pose.</p><code>0.5 × origin_score + 0.5 × sfct_score</code></article>
+              </div>
+              <p class="method-note"><strong>Best pocket:</strong> for each protein, amino acid and selected score, the pocket with the lowest score is retained for protein ranking and all within-protein specificity calculations.</p>
+              <p class="method-note"><strong>Separate score sources:</strong> the pipeline exports <code>origin_score</code> as <code>sfct_vina_score</code>. Both Combined variants use the SFCT-selected pose's original score, never the independent Vina minimum. Combined 80% remains unchanged; Combined 50% requires successful SFCT status and finite <code>sfct_vina_score</code> and <code>sfct_score</code>, even if independent Vina failed. Missing inputs produce a missing 50% score, not zero. These rules apply to both L and D data throughout rankings, filters, plots, QC, GO analysis and downloads.</p>
+              <p class="method-note"><strong>Pose-selection limitation:</strong> Combined 50% reweights each pocket's saved Combined-80%-selected pose. Protein rankings can select a different best pocket under 50%, but the app cannot reselect a different pose within a pocket because other pose scores are absent. This is retained-pose reweighting, not a fresh 50/50 docking run or an independently optimized 50/50 pose benchmark.</p>
+              <p class="method-note"><strong>Compact data:</strong> the app reads <code>At_results/L/manifest.json</code> and the optional <code>At_results/D/manifest.json</code>, each referencing its own pocket metadata and AA score files. L and D pocket IDs are resolved within their own bundles. The earlier single-folder format remains supported when neither split manifest exists. Compression removes repeated metadata, not observations: original score precision and separate source statuses are preserved. No additional quality filters or score calculations are applied during export. The source definitions above remain unchanged.</p>
+              <p class="method-note"><strong>Missing results:</strong> Vina requires <code>vina_status = success</code>; SFCT and Combined require <code>sfct_status = success</code>. A source file's generic <code>status</code>, when present, takes precedence for that source only. Each protein × AA × pocket is checked independently: failed SFCT does not remove successful Vina, failed MET does not remove successful LEU, and a failed pocket does not remove another successful pocket. Blank or non-finite scores are missing for that metric, not zero. Tables and calculations require a successful finite value for the selected metric; unavailable AAs appear as Missing in the protein profile.</p>
+            </section>
+
+            <section class="panel method-section">
+              <header class="method-section-header">
+                <div><p class="section-kicker">Derived values</p><h2>Ranks, thresholds and selectivity</h2></div>
+              </header>
+              <div class="formula-grid">
+                <article class="formula-card">
+                  <strong>Proteome rank and percentile</strong>
+                  <p>Successful finite-score pockets first pass the selected P2Rank/pLDDT thresholds. Proteins are then ordered by their best passing pocket for the selected AA and score type. Rank 1 is best; tied protein scores are ordered by UniProt ID.</p>
+                  <code>percentile = 100 × (rank − 1) / (N − 1)</code>
+                  <small>0% is best; the Top 1%, 5% and 10% filters retain percentiles at or below that cutoff. N is the number of QC-qualified proteins for that AA and score; a singleton has percentile 0. Inspecting a pocket places its score among other proteins' best QC-passing scores, excluding its own protein's best score. The same tie rule applies, so inspecting the best pocket preserves its percentile.</small>
+                </article>
+                <article class="formula-card">
+                  <strong>AA rank within a protein</strong>
+                  <p>The target AA’s rank after sorting the best score for each of the 20 canonical AAs. Rank 1 is the most favorable predicted AA for that protein.</p>
+                </article>
+                <article class="formula-card">
+                  <strong>Competitive AAs</strong>
+                  <p>Number of the available other canonical AAs whose best QC-passing score is within the selected score tolerance of, or better than, the target. The same quality thresholds apply to every AA. The displayed denominator is the number of available other AAs.</p>
+                  <code>other score ≤ target score + tolerance</code>
+                  <small>D-AA controls are excluded from this count.</small>
+                </article>
+                <article class="formula-card">
+                  <strong>Δ to median</strong>
+                  <p>Difference between the median successful best score of the available other canonical AAs and the target AA’s successful best score.</p>
+                  <code>Δ = median(available others) − target</code>
+                  <small>Positive values favor the target AA.</small>
+                </article>
+                <article class="formula-card">
+                  <strong>Selectivity Z-score</strong>
+                  <p>Target separation from the mean of the available successful other AAs, measured in their population standard deviations.</p>
+                  <code>Z = [mean(available others) − target] / SD(available others)</code>
+                  <small>Positive values favor the target. Z is missing with fewer than two other AAs or zero standard deviation; Δ and competitive-AA count are missing with no other AAs. Missing targets have no selectivity statistics. An active selectivity filter requires the corresponding statistic to be available.</small>
+                </article>
+                <article class="formula-card">
+                  <strong>AA-normalized Z-score · profile plot only</strong>
+                  <p>The <strong>AA-normalized Z-score</strong> checkbox beside Value type normalizes the selected raw score (Combined 80%, Combined 50%, Vina or SFCT), independently of Explorer’s Ranking score. Unchecked, the plot shows raw values. Choosing a percentile option unchecks and disables normalization. Each AA’s reference contains one best successful, finite-scoring pocket per protein after the shared P2Rank/pLDDT filters. Search, proteome tier and specificity filters do not restrict this reference; D-AA controls are excluded.</p>
+                  <code>Z = (score − mean for this AA) / population SD for this AA</code>
+                  <p>Lower is better: negative values are more favorable than typical for that AA, and the reference line at zero is the AA-specific mean, not a significance cutoff. When inspecting a pocket, its score uses the same best-pocket reference distribution, including that protein’s best pocket. Hover for the raw score, reference mean, SD and protein count.</p>
+                  <p>The <strong>Z = 0</strong> line marks the mean. Dashed purple segments show each AA’s actual <strong>Top 5%</strong> score boundary in Z units: <code>(Top 5% boundary score − AA mean) / AA SD</code>. The boundary is the last score included by the existing proteome rank-percentile ≤ 5% rule in that AA’s QC-passing reference. This uses observed scores, not a normal-distribution assumption; different AAs can have different cutoff heights. Inspected pockets keep the same reference boundary. Tier colors retain the existing rank-based handling of ties and inspected pockets, so identical boundary scores need not have identical tier membership.</p>
+                  <small>Z is missing with fewer than two reference proteins or zero score variation. This adjusts AA-specific score baselines, not true binding affinities or probabilities. It differs from Explorer’s within-protein Selectivity Z (positive favors the target). Raw table values, AA ranks and selectivity calculations are unchanged.</small>
+                </article>
+                <article class="formula-card">
+                  <strong>L&gt;D · L versus D amino-acid controls</strong>
+                  <p>The 19 D-AA datasets are separate controls, excluded from the canonical 20-AA profile, AA rank, median, Z-score, competitive-AA count and matrix. Glycine has no distinct L/D pair.</p>
+                  <code>L/D Δ = D-AA score − L-AA score</code>
+                  <p><strong>The L&gt;D checkbox</strong> means stronger predicted preference for the L-AA, not a numerically larger score. Since lower scores are better, it keeps proteins with <code>L score &lt; D score</code>, equivalently <code>D score − L score &gt; 0</code>, for the selected AA and ranking metric. Ties and missing/failed comparisons do not pass. It is off by default and unavailable for glycine or an unloaded D-AA dataset.</p>
+                  <p>Explorer and GO use the same independent best-QC-passing-pocket comparison; both L and D pass the tab's P2Rank/pLDDT filters before best-pocket selection; the D comparator is not tier-filtered. In GO, L&gt;D filters selected proteins only, not either background option. Enrichment is recalculated for those selected proteins. “Use Explorer settings” also copies L&gt;D; otherwise the two tabs keep independent settings. GO downloads record the selection's <code>require_l_preference</code> flag.</p>
+                  <small>Positive favors L; negative favors D; zero is a tie. Both scores must be successful and finite. Explorer applies the same quality filters to both configurations before choosing each independent best pocket. All pockets retains this protein-level difference. An inspected profile pocket compares matching L/D pocket geometry only. Missing scores are unknown, never zero or evidence of L preference. D docking is a stereochemical comparison, not a proven nonbinding control or an FDR estimate.</small>
+                </article>
+              </div>
+              <div class="threshold-strip" aria-label="Competitive amino-acid tolerances">
+                <span><strong>Combined 80% / 50% tolerance</strong> 0.10 each</span>
+                <span><strong>Vina tolerance</strong> 0.25</span>
+                <span><strong>SFCT tolerance</strong> 0.15</span>
+              </div>
+            </section>
+
+            <section class="panel method-section">
+              <header class="method-section-header">
+                <div><p class="section-kicker">Explorer data dictionary</p><h2>Protein and pocket results columns</h2></div>
+              </header>
+              <div class="method-table-wrap">
+                <table class="method-table">
+                  <thead><tr><th>Column</th><th>Meaning</th><th>Level</th></tr></thead>
+                  <tbody>
+                    <tr><th>Protein</th><td>UniProt accession links to its UniProt entry. The external database ID (Araport here) and primary gene symbol appear underneath when available. In Explorer, Compare AAs and Top-hit overlap, “i” opens local gene descriptions matched by TAIR locus ID from annotations/arabidopsis/At_custom_description_file.csv.gz; “→” opens the Protein profile tab. Transcript suffixes are normalized to gene-level IDs; missing annotations are shown explicitly.</td><td>Protein</td></tr>
+                    <tr><th>Pocket</th><td>P2Rank pocket identifier. A “best” badge marks the lowest-scoring pocket for the chosen AA and score.</td><td>Pocket</td></tr>
+                    <tr><th>Score</th><td>Value of the Ranking score selected in the Explorer: Combined 80%, Combined 50%, Vina or SFCT.</td><td>Pocket</td></tr>
+                    <tr><th>qφ (kT)</th><td>Precomputed charge-weighted receptor potential for the selected AA’s Vina pose 1 in this exact pocket, in kT: Σᵢ (qᵢ/e) × [φ<sub>receptor</sub>(rᵢ)/(kT/e)], including ligand hydrogens. Negative values indicate a net favorable contribution; positive values indicate a net unfavorable contribution in the fixed receptor field. Near zero can reflect weak or canceling contributions. Unlike receptor potential φ (kT/e), qφ sums charge × potential over all ligand atoms: positive potential favors –COO⁻, while negative potential favors –NH₃⁺; both favorable arrangements contribute negatively to qφ. The total does not identify either head group separately. This is not binding free energy or a desolvation-corrected score. It is independent of the Ranking score selector and may describe a different pose from the SFCT/Combined-selected pose. Only successful finite results are displayed; failed, clashing, missing or unvalidated values are “—” with the reason on hover, never zero. Sorting changes table order only: pocket selection, proteome/AA ranks, percentiles, selectivity, GO and QC stay unchanged. Data files and downloads keep the field name <code>qphi_kT</code>. Downloads retain full exported precision and include qphi_status, qphi_vina_pose and qphi_error.</td><td>AA × pocket × Vina pose 1</td></tr>
+                    <tr><th>AA rank</th><td>Target AA rank among the available successful canonical AAs for this protein; 1 is best. The denominator shows coverage, up to 20 AAs.</td><td>Protein</td></tr>
+                    <tr><th>Competitive AAs</th><td>Other successful canonical AAs satisfying the competitive threshold; shown out of the available other AAs, up to 19. Missing AAs are not counted as noncompetitive.</td><td>Protein</td></tr>
+                    <tr><th>Top</th><td>Proteome percentile among proteins with successful, finite, QC-passing scores for this AA and selected score; 0% is best and 100% is worst.</td><td>Protein</td></tr>
+                    <tr><th>P2Rank</th><td>P2Rank probability for the displayed pocket, from 0 to 1.</td><td>Pocket</td></tr>
+                    <tr><th>pLDDT</th><td>Mean AlphaFold pLDDT across residues assigned to the displayed pocket, from 0 to 100.</td><td>Pocket</td></tr>
+                    <tr><th>Δ median</th><td>Median successful score of the available other canonical AAs minus the target score. Positive favors the target.</td><td>Protein</td></tr>
+                    <tr><th>Z</th><td>Selectivity Z-score relative to the available successful other canonical AAs. Positive favors the target.</td><td>Protein</td></tr>
+                    <tr><th>L/D Δ</th><td>D-AA score minus the selected L-AA score. Available for loaded D controls except glycine; positive favors L. Explorer uses independent best pockets, even in All pockets mode. Missing pairs are not assigned zero. Downloads include the D-AA code, D score and D pocket.</td><td>Protein</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="method-note"><strong>Pose electrostatics loading:</strong> The optional qφ (kT) column loads only the selected AA’s pose table, with a two-table cache. Checks cover the exact compact L manifest, pocket-export provenance, AA/file checksum, headers, row count, unique pocket IDs, units and pose identity. Its loading and failures do not change docking results or the 3D viewer. L values are never substituted for D-AA or legacy results.</p>
+              <div class="mode-explainer">
+                <article><strong>Best pocket mode</strong><p>One row per protein. The row is the lowest-scoring pocket for the selected AA and score. P2Rank and pLDDT filters apply to that pocket.</p></article>
+                <article><strong>All pockets mode</strong><p>One row per retained pocket. P2Rank and pLDDT filters apply to each displayed pocket; proteome rank, percentile, AA rank, competitive-AA count, median Δ and Z remain protein-level values and are repeated.</p></article>
+              </div>
+              <p class="method-note"><strong>Score distribution:</strong> the histogram has 30 bins and defaults to All proteins. P2Rank probability and pocket mean pLDDT filters apply first, then each protein’s best successful qualifying pocket is selected for the chosen AA and score. All proteins ignores the search, top-tier and specificity filters. Table-filtered list additionally uses only matching table rows across all pages, counting each protein once by its best matching pocket. Quartiles and the median follow the displayed population. Bin colors indicate Top 1% (dark purple), 1–5% (blue), 5–10% (gold), and other proteins (pale purple). Bins spanning a cutoff have stacked segments based on actual protein counts. Histogram cutoffs are calculated among all proteins passing the P2Rank and pLDDT filters, using the last protein inside each rank-percentile tier; they stay the same between histogram views and use the same QC-qualified protein ranks as Explorer. Tied scores are ordered by UniProt ID and may straddle a rank boundary. Colors use each protein’s rank, not score alone, so equal scores can have different tier colors. The x-axis includes the confidence-filtered population’s score range in both views.</p>
+            </section>
+
+            <div class="methods-cards detail-cards">
+              <section class="panel method-section">
+                <header class="method-section-header"><div><p class="section-kicker">Protein profile table</p><h2>20-AA columns</h2></div></header>
+                <dl class="column-list">
+                  <div><dt>Rank</dt><dd>AA rank for the Explorer’s selected Ranking score.</dd></div>
+                  <div><dt>AA</dt><dd>Canonical three-letter AA code and name.</dd></div>
+                  <div><dt>Vina / SFCT / Combined 80% / Combined 50%</dt><dd>All four values from that AA’s best pocket under the selected Ranking score, or the inspected pocket.</dd></div>
+                  <div><dt>Pocket</dt><dd>Pocket supplying the row’s best score.</dd></div>
+                </dl>
+                <p class="method-note">The profile plot can display Combined 80%, Combined 50%, Vina or SFCT values. Separate percentile options use the 80% or 50% combined ranking. Each AA point is colored by the protein’s percentile tier for the plotted score; the target AA has an orange outline. The dashed line is the competitive-AA threshold for raw scores or the Top 10% cutoff for percentile.</p>
+              </section>
+              <section class="panel method-section">
+                <header class="method-section-header"><div><p class="section-kicker">Pocket details table</p><h2>Pocket-level columns</h2></div></header>
+                <p class="method-note"><strong>Inspected pocket and model identity:</strong> opening an Explorer pocket or pressing Inspect applies that same pocket to the structure panel, AA comparison and rank table. Cross-AA comparisons require matching UniProt ID, receptor model, pocket label, residue set and center coordinates. Mismatches, unsuccessful scores and QC failures stay missing; no other pocket is substituted. Protein profile and AA matrix share Explorer's quality thresholds, shown above their results; profile links from other analyses carry their source thresholds.</p>
+                <p class="method-note"><strong>Version-pinned structure:</strong> the viewer fetches the AlphaFold model identifier recorded in the result, including its fragment and version. An unsupported or unavailable model produces an explicit message, without fallback to the current AlphaFold release. pLDDT is the default protein coloring. This pins the source model but does not verify coordinate changes made during receptor preparation. The implementation uses the versioned <a href="https://github.com/molstar/molstar/blob/v5.11.0/src/mol-plugin-state/builder/structure/hierarchy-preset.ts" target="_blank" rel="noopener noreferrer">Mol* structure-loading API</a>.</p>
+                <p class="method-note"><strong>Pocket visualization:</strong> the Protein toggle switches between a cartoon (default) and a semi-transparent molecular surface (45% opacity), computed from the same receptor atoms. The surface is built on first use and cached for the currently loaded model. Green pocket override (on by default) colors the selected pocket’s <code>residue_ids</code> green on both representations, matching chain and residue number. Turn it off to see the selected protein coloring inside the pocket. Show sticks (off by default) independently shows/hides green bond cylinders; disabling either control does not disable the other. Changing pockets replaces the green region rather than accumulating highlights. Style, color and highlight changes preserve the viewing angle and other layers. The exported ligand remains element-colored ball-and-stick; P2Rank point colors are controlled separately. The protein surface is distinct from that point cloud.</p>
+                <p class="method-note"><strong>Protein residue colors:</strong> Color offers pLDDT (confidence), Residue charge, Residue polarity, and None (uniform gray), independently of Cartoon/Surface. Residue charge is a qualitative classification by the model’s residue name: ASP/GLU red (typically negative), LYS/ARG blue (typically positive), HIS ochre (protonation-dependent), and other/unknown residues gray. It does not calculate actual protonation, pKa, terminal charges, atomic partial charges, or electrostatic potential; local environment and pH can change real residue charges. These colors are descriptive only and do not alter docking scores, rankings or QC. The optional green pocket layer overrides these colors only at the selected pocket; turning it off restores the underlying scheme. Missing pockets do not remove the selected protein coloring.</p>
+                <p class="method-note"><strong>Residue polarity:</strong> Blue = polar (ARG, ASN, ASP, CYS, GLN, GLU, GLY, HIS, LYS, SER, THR, TYR); muted tan = nonpolar (ALA, ILE, LEU, MET, PHE, PRO, TRP, VAL); gray = other/unknown or modified residues. This uses the canonical-residue grouping from <a href="https://www.bahargroup.org/prody/manual/reference/atomic/flags.html#protein" target="_blank" rel="noopener noreferrer">ProDy’s polar/hydrophobic selections</a>. Polarity groupings vary between conventions, particularly for GLY/CYS/TYR; their inclusion here is a display convention, not a measured property of the local environment. Charged residues are included in the polar group. This does not calculate hydrophobicity, solvent exposure, hydrogen bonds or electrostatic potential. Pocket sticks remain green, the ligand keeps element colors, and the separate pocket-point color setting is preserved.</p>
+                <p class="method-note"><strong>P2Rank point cloud:</strong> Show pocket cloud (on by default) loads <code>At_results/pocket_points.tsv.gz</code> only when a profile needs it, then caches the shared table. Its <code>pocket_id</code> joins to the matching compact L bundle; <code>points</code> contains semicolon-separated X/Y/Z triplets. Every exported point for the selected pocket is shown at its original position as a small sphere (gold by default; radius 0.55 Å, opacity 30%), without bonds, smoothing or subsampling. These are P2Rank surface samples, not ligand atoms, an experimentally measured volume, or a reconstructed pocket mesh. The displayed count is the actual number of exported points; when it differs from <code>sas_points</code>, the metadata count is shown separately, without padding or discarding points. Missing or malformed points leave the other layers visible. The approximately 21 MB first download runs outside the structure-update queue. Cloud visibility does not change any scores, filters, ranks or QC calculations. Point IDs and receptor coordinates must originate from the same P2Rank/compact export; the coordinate-only table itself contains no model identifier or checksum. Electrostatic coloring additionally validates the point coordinates against the electrostatics summary.</p>
+                <p class="method-note"><strong>Pocket-point electrostatic potential:</strong> Pocket-point color offers Gold (default) or precomputed receptor potential sampled at each P2Rank point. The manifest fixes red → white → blue at −5 → 0 → +5 kT/e, following the <a href="https://apbs.readthedocs.io/en/stable/using/examples/visualization-pymol.html" target="_blank" rel="noopener noreferrer">APBS visualization convention</a>. Only display colors saturate beyond ±5; underlying values are unchanged. This is not a docking score, ligand interaction energy, binding probability, or protein-surface calculation in the browser. Protein coloring, green pocket sticks/override, ligand, cloud geometry/opacity and camera remain unchanged when switching this selector.</p>
+                <p class="method-note"><strong>Potential validation and missing data:</strong> The compressed v1 manifest and pocket summary in <code>At_results/electrostatics</code> load only on demand; only the selected model’s potential table is fetched, with at most two such tables cached. The app verifies the exact compact L manifest, its pocket-export hash, recorded model and pocket rank, successful calculation status, point counts, contiguous zero-based indices, coordinate-order fingerprint (SHA-256 of fixed-three-decimal X/Y/Z triplets), and compressed summary/point-file checksums. Failed, missing or mismatched results show an explicit unavailable message and gray points, not zero potential. Individually blank samples remain gray; white represents a valid zero. The browser requires HTTPS or localhost for checksum validation. Model identity and point alignment are verified, but prepared-receptor PQR coordinates are not independently compared with the displayed AlphaFold model. Electrostatic colors are visual context only and do not change any scores, ranks or QC.</p>
+                <p class="method-note"><strong>Docked ligand overlay:</strong> Show ligand displays the selected L-AA’s coordinates from <code>At_results/L/aa_positions/positions_&lt;aa&gt;.tsv.gz</code>. Files contain <code>pocket_id</code>, <code>pose_id</code> and <code>positions</code>; the unique pocket/pose pair is joined within the matching L bundle. In the default <strong>Ligand pose: Auto</strong> mode, the Protein profile’s <strong>Value type</strong> determines the displayed pose: Vina uses MODEL 1; SFCT, Combined 80% and Combined 50% use the saved SFCT/Combined-selected pose. The saved <code>sfct_best_pose</code> is zero-based, so its actual Vina MODEL number is <code>sfct_best_pose + 1</code>. Normalization does not change pose selection, and percentiles use their underlying Combined score. If both selections refer to MODEL 1, they share one coordinate row. The displayed model number and score type are shown below the viewer. This does not reselect poses: SFCT is the saved pose’s SFCT score, and Combined 50% still reweights the saved Combined-80%-selected pose. Explorer’s qφ (kT) remains specific to Vina MODEL 1, regardless of which pose is displayed. Only the requested AA file is downloaded; at most two AA files are cached in memory. Coordinates are used unchanged in the recorded receptor’s frame, with element-colored ball-and-stick rendering and hydrogens hidden. Bonds are inferred for visualization: these files do not include bond orders, charges or canonical atom names. Missing/failed selected scores, invalid pose indices, absent coordinates and unsupported bundles show a missing/unavailable message; no other pose, AA or pocket is substituted. These are docking predictions, not experimental binding sites or proof of binding. This display does not change scoring, rankings or QC calculations.</p>
+                <p class="method-note"><strong>Manual ligand pose:</strong> Choose Vina-best or Saved SFCT/Combined to inspect that exported pose independently of Value type. The saved MODEL number updates for each AA and pocket; the choice is a selection rule, not a fixed MODEL number across proteins. Manual selection is labeled below the viewer, with a note when it differs from the Value type’s pose. The dropdown and Show ligand update only the ligand layer without resetting the camera, rebuilding the protein or cloud, or changing scores, plots, rankings and QC. Missing/failed selections remain unavailable; no alternate pose is substituted. Explorer’s qφ (kT) remains specific to Vina MODEL 1.</p>
+                <dl class="column-list">
+                  <div><dt>P2Rank rank</dt><dd>Candidate-pocket rank assigned by P2Rank.</dd></div>
+                  <div><dt>Probability</dt><dd>P2Rank probability for the pocket.</dd></div>
+                  <div><dt>Mean pLDDT</dt><dd>Mean confidence across pocket residues.</dd></div>
+                  <div><dt>Vina / SFCT / Combined 80% / Combined 50%</dt><dd>All four score values for that pocket.</dd></div>
+                  <div><dt>Center (x, y, z)</dt><dd>Pocket-center coordinates in ångströms in the structure coordinate frame.</dd></div>
+                </dl>
+              </section>
+            </div>
+
+            <section class="panel method-section">
+              <header class="method-section-header"><div><p class="section-kicker">AA × AA matrix</p><h2>Proteome-wide rank correlation</h2></div></header>
+              <p>Each cell is the Spearman correlation (ρ) between the protein rankings for two AAs, using the selected score and each protein’s best QC-passing pocket, using the quality thresholds shared with Explorer. Only proteins with successful, finite, QC-passing scores for both AAs in that pair are compared; missing results for other AAs do not exclude the protein. Values near +1 indicate similar rankings, values near 0 indicate little monotonic relationship, and values near −1 indicate opposite rankings. Cells are missing with fewer than two shared proteins or no score variation. The diagonal is 1 when the correlation is defined.</p>
+            </section>
+
+            <section class="panel method-section" id="control-qc-methods">
+              <header class="method-section-header"><div><p class="section-kicker">Control QC</p><h2>Control recovery and pocket-site coverage</h2></div></header>
+              <p>Controls come from <code>annotations/arabidopsis/strict_WT_single_protein_AA_controls.tsv</code>. Only <code>control_eligible = 1</code> (or true/yes) and canonical AAs are included, with one experimental representative per AA × UniProt accession. Duplicate pairs are rejected rather than counted twice. Accessions match exactly; isoforms are not merged. Each pair contributes once, so a protein binding several AAs can contribute several controls.</p>
+              <p>For each AA and each score independently, successful finite pocket scores must pass the Control QC tab’s P2Rank and pocket mean pLDDT thresholds (default 0.7 and 90) before selecting the lowest-scoring pocket per protein. In Best-scoring pocket mode (default), the control uses this pocket too. In both modes, the entire passing best-pocket proteome for that AA is the percentile reference, not just the controls. Top proteome percentile = 100 × (rank − 1)/(N − 1), with a singleton assigned 0; equal scores are ordered by UniProt accession, consistent with the other Statistics analyses. Combined 80% uses the supplied <code>vina_sfct_combined</code> value; Combined 50% uses the saved pose’s 50/50 origin/SFCT average, not the independent Vina minimum.</p>
+              <p>The curves are empirical cumulative recovery: 100 × controls at or below the percentile cutoff / selected denominator. By default, the same controls with eligible results for all four scores form the denominator for every curve. “All known controls” keeps missing, failed or QC-excluded controls in the denominator but never invents a rank for them; each metric can recover its own available controls. Unmatched sites are also missing, not substituted with another pocket. Coverage and exclusions are reported separately. Top 1%, 5% and 10% use inclusive cutoffs and show both percentages and counts. The dashed y = x line is an ideal random-ranking reference; finite rank grids and score ties can cause small deviations. In all-known mode, missing coverage limits achievable recovery, so y = x is not a coverage-adjusted null. These are descriptive controls, not independent validation or proof of binding.</p>
+              <p>Pocket selection applies to curves, tier summaries, analyzed-site coverage and exports. Experimental matching is performed independently of docking scores and quality filters. Experimental sites use <code>UniProt_contact_positions</code> with a confirmed <code>contact_overlap</code> mapping, never PDB author residue numbers. Each representative site is evaluated against single-chain-A AlphaFold F1 pocket residue lists in matching UniProt numbering. Pockets from all loaded AAs are deduplicated by protein/model/pocket/residue list; pockets are not merged into a synthetic site. Unsupported numbering and unavailable residue lists are reported as unknown.</p>
+              <p>Control-matched pocket mode selects the predicted pocket with the largest number of mapped experimental contact residues. Equal overlaps are resolved by lower P2Rank rank, then model/pocket/residue identity—not docking score. The chosen pocket must meet the site-overlap threshold (default ≥50%; any residue, 25%, 75% and 100% are also available). This geometry match is fixed before applying target-AA docking status, finite-score and quality checks. All four metrics use that same pocket; an unavailable score, failed QC or unmatched site stays missing. No alternative pocket is substituted. Matching is a residue-overlap approximation because the control list does not contain predicted pocket IDs.</p>
+              <p>In control-matched mode, each metric places the matched pocket’s score against the other proteins’ best QC-passing scores. Its percentile is 100 × number of other proteins preceding that score / (N − 1), using the same UniProt tie-break (singleton 0). The control’s own best score is excluded so it is not counted twice. This reference is held fixed and other controls are not replaced simultaneously. It is not a rank among controls or among all pocket rows. Control-matched mode uses experimental knowledge, so its curves describe known-site-conditioned scoring, not independent end-to-end pocket selection; y = x remains an illustrative reference.</p>
+              <p>Analyzed-pocket site recovery evaluates the actual pocket supplying each metric’s QC score. A capture meets the selected overlap threshold. Each metric’s site denominator includes controls with a usable QC-passing score and comparable residues for that analyzed pocket; Evaluable / known shows the coverage, and missing/unmatched controls are not assigned zero overlap. This denominator is separate from the curve’s Recovery denominator selector. In control-matched mode the threshold is already enforced when selecting the pocket, so 100% capture among evaluable matches is expected and is not an independent recovery test.</p>
+              <p><strong>L versus D controls:</strong> the separate summary uses the controls in the chosen recovery denominator, excluding glycine because it has no L/D pair. For each metric, D score − L score is calculated only when both configurations have successful finite scores and pass the same P2Rank/pLDDT thresholds. Best mode selects L and D best pockets independently; control-matched mode requires both scores at the same L-derived experimental-site-matched pocket and receptor geometry, with no fallback. Positive, negative and exactly zero differences count as L preferred, D preferred and tied. Percentages divide by the number of evaluable pairs for that metric; missing pairs are reported separately. Neither D availability nor L preference changes L recovery ranks, curve denominators or experimental-site recovery. D-AA results never add pockets to the L-derived control-site reference. The audit table and TSV include metric-specific D scores, D pocket IDs and deltas. These comparisons measure predicted stereochemical preference, not established nonbinding, true affinity or an empirical FDR.</p>
+              <p class="method-note">Only pockets retained in successful docking results are accessible here. This is a residue-overlap diagnostic, not complete P2Rank detection sensitivity and not a ligand-to-pocket-center distance test. Full evaluation would also need the unfiltered P2Rank outputs and experimentally aligned structures. TSV exports identify the mode, matching threshold, match status, per-metric pocket/score/percentile/site coverage, denominator counts and reference convention. See the <a href="https://github.com/rdk/p2rank" target="_blank" rel="noopener noreferrer">P2Rank documentation</a> for structure-based evaluation.</p>
+            </section>
+
+            <section class="panel method-section" id="go-methods">
+              <header class="method-section-header"><div><p class="section-kicker">GO analysis</p><h2>GO algorithms and configuration</h2></div></header>
+              <div class="method-table-wrap go-method-config">
+                <table class="method-table">
+                  <caption class="sr-only">GO statistical methods and default settings; fixed methods are distinguished from editable controls.</caption>
+                  <thead><tr><th scope="col">Configuration</th><th scope="col">Method / default</th><th scope="col">Control</th></tr></thead>
+                  <tbody>
+                    <tr><th scope="row">Analysis approach</th><td>Over-representation analysis (ORA): compare a selected top-hit protein list with a parameter-filtered or total target-AA background. This is not a rank-based GSEA analysis.</td><td>Fixed</td></tr>
+                    <tr><th scope="row">Statistical test</th><td>One-sided Fisher’s exact test, equivalent to the hypergeometric upper-tail test. The alternative is over-representation (greater): at least as many term-associated proteins as observed. No depletion or two-sided test is performed.</td><td>Fixed</td></tr>
+                    <tr><th scope="row">Multiple-testing correction</th><td>Benjamini–Hochberg (BH) adjusted P-values, displayed as FDR. Correction includes all GO terms present in the background across BP, MF and CC together, including terms with zero selected hits.</td><td>Fixed</td></tr>
+                    <tr><th scope="row">Protein-selection defaults</th><td>Alanine · Top 5% · Combined 50% · P2Rank probability ≥0.7 · Pocket mean pLDDT ≥90 · Competitive AAs ≤19. These settings determine the selected proteins and reference population as described below.</td><td>Editable</td></tr>
+                    <tr><th scope="row">GO background</th><td>Parameter-filtered (default) retains the target-AA P2Rank/pLDDT filters but not the tier or Competitive AAs limit. Total (target AA) uses all successful finite target-AA scores without quality filters. Background choice changes the reference and recalculates enrichment/FDR, not the selected hits.</td><td>Editable</td></tr>
+                    <tr><th scope="row">GO aspect</th><td>Biological process (BP) by default. Molecular function (MF), Cellular component (CC) and All three aspects are also available. This filters displayed terms, not the BH correction family.</td><td>Editable</td></tr>
+                    <tr><th scope="row">FDR threshold</th><td>0.05 by default; any value greater than 0 and at most 1 is accepted. A term is marked enriched only when fold enrichment &gt;1 and its BH-adjusted P-value is at or below this threshold.</td><td>Editable</td></tr>
+                    <tr><th scope="row">FDR-only table filter</th><td>Checked and active by default. Shows only enriched terms meeting the chosen FDR threshold. Uncheck to also show other terms with selected hits; the enrichment plot still shows enriched terms only.</td><td>Toggle</td></tr>
+                    <tr><th scope="row">Execution and annotations</th><td>Local JavaScript calculations using the supplied UniProt GO file; no external enrichment API. Each UniProt accession is counted once per GO term. Only supplied annotations are used, without GO ancestor propagation.</td><td>Fixed</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="formula-grid">
+                <article class="formula-card"><strong>Selection and reference population</strong><p>GO analysis uses Explorer’s Best pocket rule: first apply P2Rank/pLDDT thresholds to every successful finite-score pocket, then choose the lowest passing score per protein for the target AA and assign its percentile within that QC-qualified population. The selected group additionally passes the top-tier cutoff, Competitive AAs maximum and L&gt;D when enabled. The default Parameter-filtered reference contains all proteins passing the same P2Rank/pLDDT thresholds, without the tier, Competitive AAs or L&gt;D cutoff. Total (target AA) instead includes all proteins with a successful finite score for the selected AA and metric, ignoring quality thresholds; it does not include proteins missing that AA score or annotation-only proteins. Both references include the selected group, and changing background does not change those selected hits. Failed protein × AA results never remove successful results for another AA. D-AA controls are not targets in this tab.</p><small>The protein-selection controls are independent of Explorer; “Use Explorer settings” also copies the Competitive AAs limit and L&gt;D, but not search, other specificity filters or All pockets mode. Defaults: Alanine, Top 5%, Combined 50%, P2Rank ≥0.7, pLDDT ≥90 and Competitive AAs ≤19. GO tiers are Top 1%, 5%, 10% and 20%–100% in 10% steps. Explorer All ranks maps to Top 100%; copying Explorer settings preserves the GO background choice, aspect and FDR threshold. At Top 100% with no competitor restriction and L&gt;D off, the filtered selection equals its background, so fold enrichment and P/FDR are 1. Total background can still differ because of the quality filters.</small></article>
+                <article class="formula-card"><strong>Annotation coverage and counting</strong><p>The local UniProt GO file supplies BP (Biological Process), MF (Molecular Function) and CC (Cellular Component) mappings. A protein is counted once per GO term; duplicate rows and repeated terms are merged. For each aspect, selected and reference proteins without any annotation in that aspect are excluded from its tests, but remain visible in the selected-protein list. Coverage reports annotated / total proteins.</p><small>Only terms explicitly supplied in the file are analyzed; no ancestor propagation, GO-slim conversion, evidence-code filtering or live annotation update is performed. The unit is a UniProt accession, not a collapsed TAIR gene; isoforms and related proteins may not be independent.</small></article>
+                <article class="formula-card"><strong>Fisher’s exact test: counts and effect size</strong><p>Selected k/n: k selected proteins annotated to this term, out of n selected proteins annotated in its aspect. Background K/N uses the same definition for the reference population. Expected hits = n × K/N. Fold enrichment above 1 means the term is more frequent in the selection. P-value is the one-sided Fisher exact (hypergeometric upper-tail) probability of at least k hits under random selection from that reference.</p><code>Fold = (k / n) / (K / N) · P = Pr[X ≥ k], X ~ Hypergeometric(N, K, n)</code><small>Background counts include the selected proteins. No depletion test is performed. Log-space calculations preserve very small probabilities.</small></article>
+                <article class="formula-card"><strong>FDR, plot and downloads</strong><p>Benjamini–Hochberg correction is applied jointly across all background GO terms from all three aspects, including terms with zero selected hits. GO aspect (default Biological process) and FDR threshold (default 0.05) are in the main options row. An enriched term has fold &gt;1 and FDR at or below the chosen threshold. The table’s FDR-only checkbox is checked and active by default; uncheck it to see other terms with selected hits. Changing aspect, threshold, search or display filters does not recalculate FDR or change the protein populations. Changing background does recalculate counts, P-values and BH FDR across the chosen background’s terms. The chart shows up to 12 enriched terms ranked by adjusted significance, with fold enrichment on the x-axis and a purple color gradient for −log10(FDR). Darker bars indicate smaller FDR; the legend runs from −log10(the chosen threshold) to the largest displayed −log10(FDR), with a minimum span of 0.1.</p><small>Click k/n to inspect its selected proteins. TSV/CSV term downloads include all matching rows, not just the page, plus counts, settings (including the FDR threshold), hit IDs, P/FDR and their −log10 values. Separate TSV downloads contain the displayed protein set or the complete chosen background, including unannotated proteins. All table exports record background_mode; plot exports also label the background. Docking enrichment is descriptive, not proof of binding or causation; repeated exploration and related GO terms warrant caution.</small></article>
+              </div>
+              <p class="method-note"><strong>Competitive AAs in the selected-protein table:</strong> uses Explorer’s score-tolerance rule with the GO tab’s target AA and ranking score. Counts other canonical AAs whose best successful score is ≤ target score + tolerance (Combined 80%/50%: 0.10 each; Vina: 0.25; SFCT: 0.15). Shown as count / available other AAs, up to 19; target AA and D-AA controls are excluded. Missing scores are unknown, not noncompetitive. Other-AA scores pass the same GO P2Rank/pLDDT thresholds before best-pocket selection, but are not filtered by GO tier. The Competitive AAs ≤ filter applies this count to the selected proteins before GO enrichment, without restricting the chosen background. Default 19 is unrestricted; lower values require an available comparison. This differs from Top-hit overlap’s x/20 membership count. Protein TSV downloads include the count, available-other-AA denominator, tolerance and configured maximum; term downloads also record the maximum.</p>
+              <p class="method-note">Source: <code>annotations/arabidopsis/arabidopsis_uniprot_go.tsv.gz</code>, loaded on demand. Method references: <a href="https://www.geneontology.org/docs/go-enrichment-analysis/" target="_blank" rel="noopener noreferrer">GO enrichment and reference lists</a>, <a href="https://docs.scipy.org/doc/scipy-1.17.0/reference/generated/scipy.stats.fisher_exact.html" target="_blank" rel="noopener noreferrer">Fisher exact test</a>, and <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.false_discovery_control.html" target="_blank" rel="noopener noreferrer">Benjamini–Hochberg correction</a>. Calculations run locally in JavaScript; SciPy and external enrichment APIs are not required.</p>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <dialog class="gene-description-dialog" id="gene-description-dialog" aria-labelledby="gene-description-title" aria-describedby="gene-description-ids">
+      <header class="gene-description-header">
+        <div><p class="section-kicker">TAIR gene annotations</p><h2 id="gene-description-title">Gene descriptions</h2><p id="gene-description-ids"></p></div>
+        <button class="button secondary" id="gene-description-close" type="button" aria-label="Close gene descriptions" autofocus>×</button>
+      </header>
+      <div id="gene-description-body" class="gene-description-body" aria-live="polite"></div>
+      <p class="gene-description-source">Source: <span>annotations/arabidopsis/At_custom_description_file.csv.gz</span></p>
+    </dialog>
+
+    <footer>
+      <div class="shell">
+        <span>AA Proteome Interaction Atlas · Arabidopsis</span>
+        <span>Scores indicate predicted compatibility—not experimental binding.</span>
+      </div>
+    </footer>
+
+    <script src="js/protein-annotations.js?v=arabidopsis-annotations-24"></script>
+    <script src="js/analysis.js?v=consistent-qc-pockets-54"></script>
+    <script src="js/control-qc.js?v=consistent-qc-pockets-54"></script>
+    <script src="js/go-analysis.js?v=consistent-qc-pockets-54"></script>
+    <script src="js/compact-data.js?v=ligand-overlay-55"></script>
+    <script src="js/ligand-viewer.js?v=qphi-notation-74"></script>
+    <script src="js/pocket-electrostatics.js?v=pose-qphi-71"></script>
+    <script src="js/pose-electrostatics.js?v=qphi-notation-74"></script>
+    <script src="js/pocket-cloud.js?v=pocket-potential-69"></script>
+    <script src="js/protein-viewer.js?v=residue-polarity-68"></script>
+    <script src="js/app.js?v=ligand-pose-choice-73"></script>
+  </body>
+</html>

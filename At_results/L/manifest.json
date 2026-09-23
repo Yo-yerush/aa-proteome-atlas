@@ -1,0 +1,239 @@
+{
+  "format": "aa-proteome-atlas-compact",
+  "version": 1,
+  "generator": "prepare_atlas_data.py",
+  "pockets": {
+    "file": "pockets.tsv.gz",
+    "rows": 33721,
+    "bytes": 2301076,
+    "sha256": "ace798990dc333cae816a67091e3caaa74f4c354c03b1a02d3b967c48a303795"
+  },
+  "ligands": [
+    {
+      "file": "scores_ala.tsv.gz",
+      "rows": 33721,
+      "bytes": 464419,
+      "sha256": "0291b85c20b65de265ee42033ce2c1a34fefafc9f8a169aaae1f004c036ec259",
+      "code": "ALA",
+      "sources": {
+        "sfct": "sfct_ala_all_pockets.tsv",
+        "vina": "vina_ala_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_arg.tsv.gz",
+      "rows": 33721,
+      "bytes": 474676,
+      "sha256": "144a03bbfdc1231ecbc87f550af93372a207fd235a7efcaa20fcd5b793986164",
+      "code": "ARG",
+      "sources": {
+        "sfct": "sfct_arg_all_pockets.tsv",
+        "vina": "vina_arg_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_asn.tsv.gz",
+      "rows": 33721,
+      "bytes": 471705,
+      "sha256": "29e2af61a6814682f4a5a2b8dadcd2e1d15b348d54b12f3c421d48fdef23138b",
+      "code": "ASN",
+      "sources": {
+        "sfct": "sfct_asn_all_pockets.tsv",
+        "vina": "vina_asn_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_asp.tsv.gz",
+      "rows": 33721,
+      "bytes": 473435,
+      "sha256": "98870eaec61ff29a3c2de88e8bb56396b30f46cdfd163ab7e8ab629f540eda63",
+      "code": "ASP",
+      "sources": {
+        "sfct": "sfct_asp_all_pockets.tsv",
+        "vina": "vina_asp_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_cys.tsv.gz",
+      "rows": 33721,
+      "bytes": 462059,
+      "sha256": "a8c259610e0ae4323340dfc5b7064cc0e0749fef3b7217ffe623469134beccdc",
+      "code": "CYS",
+      "sources": {
+        "sfct": "sfct_cys_all_pockets.tsv",
+        "vina": "vina_cys_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_gln.tsv.gz",
+      "rows": 33721,
+      "bytes": 472376,
+      "sha256": "27bacc11bbe8de3a5a43e6f410265b91dc63029d5af4ce411106f036c57cfdc8",
+      "code": "GLN",
+      "sources": {
+        "sfct": "sfct_gln_all_pockets.tsv",
+        "vina": "vina_gln_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_glu.tsv.gz",
+      "rows": 33721,
+      "bytes": 473185,
+      "sha256": "0e347f80c3e452efbbcd539c6809d8cf91de1737d949aa93a0571e4c4e976c83",
+      "code": "GLU",
+      "sources": {
+        "sfct": "sfct_glu_all_pockets.tsv",
+        "vina": "vina_glu_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_gly.tsv.gz",
+      "rows": 33721,
+      "bytes": 464022,
+      "sha256": "7b5d0a4a20fb13ed7ec3ec6a4da928faa66e3b453cd69c44bcc2ef6176d14999",
+      "code": "GLY",
+      "sources": {
+        "sfct": "sfct_gly_all_pockets.tsv",
+        "vina": "vina_gly_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_his.tsv.gz",
+      "rows": 33721,
+      "bytes": 472178,
+      "sha256": "026499229d7aa0f10c0dca695b2c05aee80f6d03564d469b84677a14e24b387f",
+      "code": "HIS",
+      "sources": {
+        "sfct": "sfct_his_all_pockets.tsv",
+        "vina": "vina_his_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_ile.tsv.gz",
+      "rows": 33721,
+      "bytes": 467614,
+      "sha256": "b647610f9d54892d11a9359b33114c7795f44b68e2ca6a109dc6aecdbd0b1780",
+      "code": "ILE",
+      "sources": {
+        "sfct": "sfct_ile_all_pockets.tsv",
+        "vina": "vina_ile_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_leu.tsv.gz",
+      "rows": 33721,
+      "bytes": 468207,
+      "sha256": "a1206f2c6fdf90de807df17b3fcf20045942b8d7b083c34457c3b420fc5741ce",
+      "code": "LEU",
+      "sources": {
+        "sfct": "sfct_leu_all_pockets.tsv",
+        "vina": "vina_leu_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_lys.tsv.gz",
+      "rows": 33721,
+      "bytes": 468901,
+      "sha256": "2c7fc80331006a158daec05f78fda4852fb6f34b834ec07d3f0d62628c44da91",
+      "code": "LYS",
+      "sources": {
+        "sfct": "sfct_lys_all_pockets.tsv",
+        "vina": "vina_lys_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_met.tsv.gz",
+      "rows": 33721,
+      "bytes": 462991,
+      "sha256": "0487530d6be4d8aca9ca0d6e6c145fd346d2dece9780b1dc151d3370e443d9b9",
+      "code": "MET",
+      "sources": {
+        "sfct": "sfct_met_all_pockets.tsv",
+        "vina": "vina_met_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_phe.tsv.gz",
+      "rows": 33721,
+      "bytes": 477691,
+      "sha256": "64fabf9936fa2f5e7027d95f1966f9bb7736f4764088942b5160af5348957989",
+      "code": "PHE",
+      "sources": {
+        "sfct": "sfct_phe_all_pockets.tsv",
+        "vina": "vina_phe_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_pro.tsv.gz",
+      "rows": 33721,
+      "bytes": 467732,
+      "sha256": "71215c701af35919b4a854be065c6379ad2d560376f4a4fdce51429d21bfb950",
+      "code": "PRO",
+      "sources": {
+        "sfct": "sfct_pro_all_pockets.tsv",
+        "vina": "vina_pro_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_ser.tsv.gz",
+      "rows": 33721,
+      "bytes": 471993,
+      "sha256": "c8dcee072bf25e631e9536131f250d6858894ef5cacb75ff0d9a38a218c763dc",
+      "code": "SER",
+      "sources": {
+        "sfct": "sfct_ser_all_pockets.tsv",
+        "vina": "vina_ser_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_thr.tsv.gz",
+      "rows": 33721,
+      "bytes": 472784,
+      "sha256": "32284ebd76c02bbe2263aabec24d1953072b5a00e234069c97d3390b03bd0a5f",
+      "code": "THR",
+      "sources": {
+        "sfct": "sfct_thr_all_pockets.tsv",
+        "vina": "vina_thr_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_trp.tsv.gz",
+      "rows": 33721,
+      "bytes": 482255,
+      "sha256": "9875327f46bd0d4f47296c85c36587b5e0a8b845f189f242fe073291a10c140b",
+      "code": "TRP",
+      "sources": {
+        "sfct": "sfct_trp_all_pockets.tsv",
+        "vina": "vina_trp_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_tyr.tsv.gz",
+      "rows": 33721,
+      "bytes": 478474,
+      "sha256": "ea92b77a36a12b32095c294ac17fa27e37ecc28aa5da8f47491e8a76f0e72e29",
+      "code": "TYR",
+      "sources": {
+        "sfct": "sfct_tyr_all_pockets.tsv",
+        "vina": "vina_tyr_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_val.tsv.gz",
+      "rows": 33721,
+      "bytes": 466923,
+      "sha256": "e63594e58530897cd25c04f6c62c02123b280420a7468ea9d6094e6155d3575b",
+      "code": "VAL",
+      "sources": {
+        "sfct": "sfct_val_all_pockets.tsv",
+        "vina": "vina_val_all_pockets.tsv"
+      }
+    }
+  ],
+  "input_bytes": 348589398,
+  "protein_aa_pocket_rows": 674420,
+  "score_precision": "Source score strings retained without rounding or recalculation",
+  "quality_filters_applied": false,
+  "failed_rows_retained": true,
+  "sha256_basis": "Uncompressed UTF-8 TSV bytes"
+}

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Rounded cream icon background; outside remains transparent -->
+  <rect width="64" height="64" rx="15" fill="#f7f4ef"/>
+
+  <!-- Hollow purple hexagonal receptor -->
+  <path fill="#6f3fa4" fill-rule="evenodd" d="
+    M18 15 H38 L47 29 L38 45 H18 L9 29 Z
+    M22 20 H34 L40.5 29 L34 40 H22 L15.5 29 Z
+  "/>
+
+  <!-- Binding-pocket notch carved into the lower-right slanted edge -->
+  <circle cx="44.4" cy="39.7" r="8.7" fill="#f7f4ef"/>
+
+  <!-- Orange ligand docked into that pocket -->
+  <circle cx="46.2" cy="41.2" r="8.2" fill="#ee6b3b"/>
+</svg>
