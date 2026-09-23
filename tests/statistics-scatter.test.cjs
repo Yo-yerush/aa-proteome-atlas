@@ -21,7 +21,7 @@ const tooltip = { hidden: true, textContent: '' };
 node('#statistics-scatter').querySelector = selector => selector === 'canvas' ? canvas : tooltip;
 const context = vm.createContext({ console, URLSearchParams, devicePixelRatio: 2,
   document: { querySelector: node, querySelectorAll: () => [] } });
-for (const file of ['js/app.js', 'js/analysis.js']) {
+for (const file of ['js/organisms.js', 'js/app.js', 'js/analysis.js']) {
   vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8').replace(/\binit\(\);\s*$/, ''), context);
 }
 const run = source => vm.runInContext(source, context);

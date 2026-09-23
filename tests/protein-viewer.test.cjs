@@ -53,7 +53,7 @@ const context = vm.createContext({ console: { ...console, warn: (...args) => war
   document: { querySelector: node, querySelectorAll: selector => selector === '[data-protein-style]' ? buttons : [] },
   fetch() { throw Error('Switching style must not download data'); } });
 const root = path.resolve(__dirname, '..');
-for (const file of ['ligand-viewer.js', 'protein-viewer.js', 'app.js']) {
+for (const file of ['organisms.js', 'ligand-viewer.js', 'protein-viewer.js', 'app.js']) {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', file), 'utf8').replace(/\binit\(\);\s*$/, ''), context);
 }
 const run = source => vm.runInContext(source, context);

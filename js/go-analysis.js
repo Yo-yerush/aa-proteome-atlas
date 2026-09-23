@@ -1,5 +1,5 @@
 // Local GO overrepresentation analysis. Source annotations and docking rows are never modified.
-const GO_ANNOTATION_PATH = "annotations/arabidopsis/arabidopsis_uniprot_go.tsv.gz";
+const GO_ANNOTATION_PATH = ORGANISM.go;
 const GO_ASPECTS = [
   { code: "BP", name: "Biological process", column: "Gene Ontology (biological process)" },
   { code: "MF", name: "Molecular function", column: "Gene Ontology (molecular function)" },
@@ -54,7 +54,7 @@ function parseGOAnnotations(text) {
 async function loadGOAnnotations() {
   if (!goAnnotationPromise) {
     goAnnotationPromise = (async () => {
-      const response = await fetch(GO_ANNOTATION_PATH, { cache: "no-cache" });
+      const response = await atlasFetch(GO_ANNOTATION_PATH, { cache: "no-cache" });
       if (!response.ok) throw new Error(`Could not load ${GO_ANNOTATION_PATH} (HTTP ${response.status}).`);
       const bytes = new Uint8Array(await response.arrayBuffer());
       let text;
@@ -367,7 +367,7 @@ async function renderGOAnalysis() {
   } catch (error) {
     if (request !== goRequest) return;
     goResult = null;
-    $("#go-error-message").textContent = error.message;
+    $("#go-error-message").textContent = `Unavailable — ${error.message}`;
     $("#go-error").hidden = false;
   } finally {
     if (request === goRequest) {
@@ -398,11 +398,11 @@ function downloadGOTerms(delimiter) {
 function downloadGOProteins(background = false) {
   if (!goResult) return;
   const options = goResult.options;
-  const headers = ["uniprot_id", "gene_symbol", "tair_id", "target_aa", "tier_percent", "ranking_score", "score", "pocket", "proteome_percentile", "competitive_aas", "available_other_aa_count", "competitive_aa_tolerance", "p2rank_probability", "pocket_mean_plddt", "p2rank_min", "plddt_min", "max_competitive_aas", "require_l_preference", "background_mode", "bp_terms", "mf_terms", "cc_terms", "inspected_go_term", "annotation_source"];
+  const headers = ["uniprot_id", "gene_symbol", ORGANISM.rowIdentifier, "target_aa", "tier_percent", "ranking_score", "score", "pocket", "proteome_percentile", "competitive_aas", "available_other_aa_count", "competitive_aa_tolerance", "p2rank_probability", "pocket_mean_plddt", "p2rank_min", "plddt_min", "max_competitive_aas", "require_l_preference", "background_mode", "bp_terms", "mf_terms", "cc_terms", "inspected_go_term", "annotation_source"];
   const rows = (background ? goResult.background : goDisplayedProteins()).map((row) => {
     const annotation = goResult.data.proteins.get(row.uniprot_id);
     const comparison = getComparison(row.uniprot_id, options.aa, options.metric, null, options);
-    return [row.uniprot_id, geneSymbol(state.annotations.get(row.uniprot_id)), row.tair_id, options.aa, options.top, options.metric, row[options.metric], row.pocket, row.proteome_percentile, comparison.nearCompetitors, comparison.otherCount, METRICS[options.metric].nearWindow, row.probability, row.mean_pocket_plddt, options.p2rank, options.plddt, options.maxCompetitors, goRequiresLPreference(options), options.background,
+    return [row.uniprot_id, geneSymbol(state.annotations.get(row.uniprot_id)), row[ORGANISM.rowIdentifier], options.aa, options.top, options.metric, row[options.metric], row.pocket, row.proteome_percentile, comparison.nearCompetitors, comparison.otherCount, METRICS[options.metric].nearWindow, row.probability, row.mean_pocket_plddt, options.p2rank, options.plddt, options.maxCompetitors, goRequiresLPreference(options), options.background,
       ...GO_ASPECTS.map(({ code }) => [...(annotation?.[code] || [])].join(";")), background ? "" : goState.term || "", GO_ANNOTATION_PATH];
   });
   downloadText(`go_${options.aa.toLowerCase()}_${background ? "background" : goState.term?.replace(":", "_") || `top${options.top}_selected`}_bg_${options.background}${goRequiresLPreference(options) ? "_ld" : ""}_proteins.tsv`, goDelimited(headers, rows, "\t"));

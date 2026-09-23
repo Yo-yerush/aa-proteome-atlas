@@ -1,5 +1,5 @@
 // Local experimental controls: descriptive ranking QC and a separate residue-overlap diagnostic.
-const CONTROL_QC_PATH = "annotations/arabidopsis/strict_WT_single_protein_AA_controls.tsv";
+const CONTROL_QC_PATH = ORGANISM.controls;
 const CONTROL_QC_METRICS = [
   { id: "vina", key: "vina_affinity", label: "Vina", color: "#7650a1", dash: "" },
   { id: "sfct", key: "sfct_score", label: "SFCT", color: "#437884", dash: "7 3" },
@@ -82,7 +82,7 @@ function parseControlTSV(text) {
 async function loadControlQCData() {
   if (!controlQCDataPromise) {
     controlQCDataPromise = (async () => {
-      const response = await fetch(CONTROL_QC_PATH);
+      const response = await atlasFetch(CONTROL_QC_PATH);
       if (!response.ok) throw new Error(`Control file could not be loaded (HTTP ${response.status}).`);
       return parseControlTSV(await response.text());
     })().catch((error) => { controlQCDataPromise = null; throw error; });

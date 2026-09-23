@@ -77,7 +77,7 @@ const context = vm.createContext({ viewer, proteinRoot, representation, console:
   } } },
   fetch() { throw Error('Color controls must not download anything'); },
 });
-for (const file of ['ligand-viewer.js', 'protein-viewer.js', 'app.js']) {
+for (const file of ['organisms.js', 'ligand-viewer.js', 'protein-viewer.js', 'app.js']) {
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', file), 'utf8').replace(/\binit\(\);\s*$/, ''), context);
 }
 const run = code => vm.runInContext(code, context);

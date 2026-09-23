@@ -39,8 +39,7 @@ function dControlCode(code) {
 function hasDControl(code = state.aa) {
   return Boolean(dControlCode(code) && state.rawByAA.has(dControlCode(code)));
 }
-const RESULTS_DIRECTORY = "At_results";
-const UNIPROT_ANNOTATION_PATH = "annotations/arabidopsis/arabidopsis_uniprot.tsv.gz";
+const UNIPROT_ANNOTATION_PATH = ORGANISM.annotations;
 
 const METRICS = {
   vina_sfct_combined: { label: "Combined 80%", short: "combined80", digits: 3, nearWindow: 0.10 },
@@ -72,6 +71,7 @@ const NUMERIC_FIELDS = new Set([
 ]);
 
 const state = {
+  unavailableDatasets: [],
   rawByAA: new Map(),
   rankingCache: new Map(),
   metadata: new Map(),
@@ -180,15 +180,15 @@ function fmt(value, digits = 3) {
 }
 
 function geneLabel(row) {
-  return (row?.tair_id || "No TAIR ID").split(";").filter(Boolean).join(" · ");
+  return (row?.[ORGANISM.rowIdentifier] || `No ${ORGANISM.identifierLabel}`).split(";").filter(Boolean).join(" · ");
 }
 
 function annotationValue(annotation, field, fallback = "Not available") {
   return annotation?.[field]?.trim() || fallback;
 }
 
-function araportLabel(annotation, fallback = "No Araport ID") {
-  const ids = annotationValue(annotation, "Araport", "").split(";").filter(Boolean);
+function locusLabel(annotation, fallback = `No ${ORGANISM.identifierLabel}`) {
+  const ids = annotationValue(annotation, ORGANISM.annotationIdentifier, "").split(/[;\s]+/).filter(Boolean);
   return ids.length ? ids.join(" · ") : fallback;
 }
 
@@ -198,7 +198,7 @@ function geneSymbol(annotation) {
 
 function annotationSearchText(protein) {
   const annotation = state.annotations.get(protein);
-  return annotation ? [annotation.Entry, annotation["Entry Name"], annotation["Gene Names"], annotation.Araport].join(" ") : "";
+  return annotation ? [annotation.Entry, annotation["Entry Name"], annotation["Gene Names"], annotation[ORGANISM.annotationIdentifier]].join(" ") : "";
 }
 
 function median(values) {
@@ -523,7 +523,9 @@ function readURLState() {
 }
 
 function updateURL() {
+  if (organismLeaving) return;
   const params = new URLSearchParams();
+  if (ORGANISM.id !== DEFAULT_ORGANISM_ID) params.set("organism", ORGANISM.id);
   if (state.aa !== "ALA") params.set("aa", state.aa);
   if (state.metric !== "vina_sfct_combined_50") params.set("metric", state.metric);
   if (state.top !== 100) params.set("top", state.top);
@@ -557,13 +559,13 @@ function filterRows() {
   let filtered;
   if (state.pocketMode === "best") {
     filtered = rankedProteins.filter((row) => {
-      const searchable = [row.uniprot_id, row.tair_id, row.protein, row.pocket, annotationSearchText(row.uniprot_id)].join(" ").toLowerCase();
+      const searchable = [row.uniprot_id, row[ORGANISM.rowIdentifier], row.protein, row.pocket, annotationSearchText(row.uniprot_id)].join(" ").toLowerCase();
       return proteinEligible(row) && (!query || searchable.includes(query));
     });
   } else {
     const eligibleByProtein = new Map(rankedProteins.filter(proteinEligible).map((row) => [row.uniprot_id, row]));
     filtered = (state.rawByAA.get(state.aa) || []).filter((row) => {
-      const searchable = [row.uniprot_id, row.tair_id, row.protein, row.pocket, annotationSearchText(row.uniprot_id)].join(" ").toLowerCase();
+      const searchable = [row.uniprot_id, row[ORGANISM.rowIdentifier], row.protein, row.pocket, annotationSearchText(row.uniprot_id)].join(" ").toLowerCase();
       return eligibleByProtein.has(row.uniprot_id)
         && hasUsableScore(row, state.metric)
         && (!query || searchable.includes(query))
@@ -831,7 +833,7 @@ function findProfileProteins(query) {
   if (!profileProteinSearchIndex) {
     profileProteinSearchIndex = [...state.metadata].map(([protein, row]) => {
       const annotation = state.annotations.get(protein);
-      const details = [row?.tair_id, annotation?.Araport, annotation?.["Gene Names"], annotation?.["Entry Name"]].filter(Boolean);
+      const details = [row?.[ORGANISM.rowIdentifier], annotation?.[ORGANISM.annotationIdentifier], annotation?.["Gene Names"], annotation?.["Entry Name"]].filter(Boolean);
       const aliases = details.flatMap((value) => String(value).toLowerCase().split(/[\s;,|]+/)).filter(Boolean);
       return { protein, label: [...new Set(details)].join(" · "), aliases, searchText: [protein, ...details].join(" ").toLowerCase() };
     });
@@ -845,7 +847,7 @@ function renderProfileProteinSearch() {
   const query = $("#profile-protein-search").value;
   const matches = findProfileProteins(query);
   $("#profile-protein-options").innerHTML = matches.slice(0, 20).map((entry) => `<option value="${escapeHTML(entry.protein)}" label="${escapeHTML(entry.label)}"></option>`).join("");
-  $("#profile-protein-search-status").textContent = !query.trim() ? "Type a UniProt ID, gene symbol or TAIR/Araport ID."
+  $("#profile-protein-search-status").textContent = !query.trim() ? `Type a UniProt ID, gene symbol or ${ORGANISM.identifierLabel}.`
     : !matches.length ? "No loaded proteins match this search."
     : `${matches.length} matching proteins. ${matches.length > 20 ? "Showing the first 20 suggestions; refine your search for more specific matches." : "Choose a suggestion or press Enter for a unique match."}`;
   return matches;
@@ -1261,10 +1263,10 @@ function renderProtein() {
   $("#protein-subtitle").textContent = `${geneLabel(meta)} · ${meta?.protein || "AlphaFold model"}`;
   $("#profile-entry-name").textContent = annotationValue(annotation, "Entry Name", "No UniProt annotation");
   $("#profile-gene-names").textContent = annotationValue(annotation, "Gene Names", "Gene names not available");
-  $("#profile-araport").textContent = araportLabel(annotation);
+  $("#profile-araport").textContent = locusLabel(annotation, geneLabel(meta));
   const geneInfoButton = $("#profile-gene-info");
   geneInfoButton.dataset.geneInfo = protein;
-  geneInfoButton.dataset.tairIds = proteinTairIds(protein, meta).join(";");
+  geneInfoButton.dataset.geneIds = proteinGeneIds(protein, meta).join(";");
   geneInfoButton.setAttribute("aria-label", `Gene descriptions for ${protein}`);
   geneInfoButton.hidden = false;
   $("#profile-aa-select").value = state.aa;
@@ -1396,6 +1398,8 @@ function downloadText(filename, text, mime = "text/tab-separated-values") {
 }
 
 function downloadBlob(filename, blob) {
+  if (organismLeaving) return;
+  filename = `${ORGANISM.id}_${filename}`;
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -1408,7 +1412,7 @@ function downloadBlob(filename, blob) {
 }
 
 function rowsToDelimited(rows, delimiter) {
-  const headers = ["uniprot_id", "gene_symbol", "tair_id", "amino_acid", "pocket", "is_best_pocket", "score_metric", "score", "proteome_rank", "proteome_percentile", "aa_rank_within_protein", "near_competing_aas", "p2rank_probability", "mean_pocket_plddt", "delta_to_median_other_available_aas", "selectivity_z", "d_minus_l_delta", "vina_score", "sfct_score", "combined_score", "combined_50_score", "available_aa_count", "available_other_aa_count", "d_control_aa", "d_control_score", "d_control_pocket", "qphi_kT", "qphi_status", "qphi_vina_pose", "qphi_error"];
+  const headers = ["uniprot_id", "gene_symbol", ORGANISM.rowIdentifier, "amino_acid", "pocket", "is_best_pocket", "score_metric", "score", "proteome_rank", "proteome_percentile", "aa_rank_within_protein", "near_competing_aas", "p2rank_probability", "mean_pocket_plddt", "delta_to_median_other_available_aas", "selectivity_z", "d_minus_l_delta", "vina_score", "sfct_score", "combined_score", "combined_50_score", "available_aa_count", "available_other_aa_count", "d_control_aa", "d_control_score", "d_control_pocket", "qphi_kT", "qphi_status", "qphi_vina_pose", "qphi_error"];
   const quote = (value) => {
     if (typeof value === "number" && !Number.isFinite(value)) return "";
     const string = String(value ?? "");
@@ -1418,7 +1422,7 @@ function rowsToDelimited(rows, delimiter) {
   const data = rows.map((row) => {
     const comparison = row.comparison || getComparison(row.uniprot_id);
     const qphi = poseElectrostaticsForRow(row);
-    return [row.uniprot_id, geneSymbol(state.annotations.get(row.uniprot_id)), row.tair_id, state.aa, row.pocket, row.isBestPocket, state.metric, row[state.metric], row.proteome_rank, row.proteome_percentile, comparison.target?.aa_rank, comparison.nearCompetitors, row.probability, row.mean_pocket_plddt, comparison.delta, comparison.z, comparison.stereoControl?.delta ?? "", row.vina_affinity, row.sfct_score, row.vina_sfct_combined, row.vina_sfct_combined_50, comparison.profile.length, comparison.otherCount, dControlCode(state.aa) || "", comparison.stereoControl?.dRow[state.metric] ?? "", comparison.stereoControl?.dRow.pocket ?? "", qphi.value, qphi.status, qphi.pose, qphi.error].map(quote).join(delimiter);
+    return [row.uniprot_id, geneSymbol(state.annotations.get(row.uniprot_id)), row[ORGANISM.rowIdentifier], state.aa, row.pocket, row.isBestPocket, state.metric, row[state.metric], row.proteome_rank, row.proteome_percentile, comparison.target?.aa_rank, comparison.nearCompetitors, row.probability, row.mean_pocket_plddt, comparison.delta, comparison.z, comparison.stereoControl?.delta ?? "", row.vina_affinity, row.sfct_score, row.vina_sfct_combined, row.vina_sfct_combined_50, comparison.profile.length, comparison.otherCount, dControlCode(state.aa) || "", comparison.stereoControl?.dRow[state.metric] ?? "", comparison.stereoControl?.dRow.pocket ?? "", qphi.value, qphi.status, qphi.pose, qphi.error].map(quote).join(delimiter);
   });
   return [headers.join(delimiter), ...data].join("\n");
 }
@@ -1462,8 +1466,8 @@ function downloadProfileTable(delimiter) {
 function downloadProfile() {
   if (!state.selectedProtein) return;
   const profile = getProteinProfile(state.selectedProtein, state.metric, state.profilePocket);
-  const headers = ["uniprot_id", "tair_id", "amino_acid", "aa_name", "aa_rank_within_protein", "pocket", "vina_score", "sfct_score", "combined_score", "combined_50_score"];
-  const rows = profile.map((row) => [state.selectedProtein, row.tair_id, row.code, row.name, row.aa_rank, row.pocket, row.vina_affinity, row.sfct_score, row.vina_sfct_combined, row.vina_sfct_combined_50].map((value) => typeof value === "number" && !Number.isFinite(value) ? "" : value).join("\t"));
+  const headers = ["uniprot_id", ORGANISM.rowIdentifier, "amino_acid", "aa_name", "aa_rank_within_protein", "pocket", "vina_score", "sfct_score", "combined_score", "combined_50_score"];
+  const rows = profile.map((row) => [state.selectedProtein, row[ORGANISM.rowIdentifier], row.code, row.name, row.aa_rank, row.pocket, row.vina_affinity, row.sfct_score, row.vina_sfct_combined, row.vina_sfct_combined_50].map((value) => typeof value === "number" && !Number.isFinite(value) ? "" : value).join("\t"));
   const basis = state.profilePocket ? `_${state.profilePocket}` : "_best_pockets";
   downloadText(`${state.selectedProtein}${basis}_20aa_profile.tsv`, [headers.join("\t"), ...rows].join("\n"));
 }
@@ -1834,7 +1838,7 @@ function bindEvents() {
 }
 
 async function loadGzippedResultText(path) {
-  const response = await fetch(path, { cache: "no-cache" });
+  const response = await atlasFetch(path, { cache: "no-cache" });
   if (!response.ok) throw new Error(`Could not load ${path} (HTTP ${response.status}). Check that this file is included in the published site`);
   const bytes = new Uint8Array(await response.arrayBuffer());
   let text;
@@ -1922,8 +1926,11 @@ async function loadResultRows(aa) {
 
 async function loadUniProtAnnotations() {
   state.annotations.clear();
-  const response = await fetch(UNIPROT_ANNOTATION_PATH, { cache: "no-cache" });
-  if (!response.ok) return;
+  const response = await atlasFetch(UNIPROT_ANNOTATION_PATH, { cache: "no-cache" });
+  if (!response.ok) {
+    state.unavailableDatasets.push("UniProt annotations");
+    return;
+  }
   const bytes = new Uint8Array(await response.arrayBuffer());
   let text;
   // A server may already decode gzip via Content-Encoding; inspect the actual bytes.
@@ -1990,23 +1997,29 @@ async function loadData() {
 
 async function init() {
   try {
+    initializeOrganismUI();
     readURLState();
     await loadData();
+    if (organismLeaving) return;
     populateAASelects();
     syncControls();
     bindEvents();
     renderExplorer();
     const proteinCount = state.metadata.size;
     $("#release-summary").textContent = `${AMINO_ACIDS.length} amino acids · ${proteinCount} proteins`;
+    const missing = [...state.unavailableDatasets, ...DATA_LIGANDS.filter(({ code }) => !state.rawByAA.has(code)).map(({ code }) => `${code} scores`)];
+    $("#dataset-availability").hidden = !missing.length;
+    $("#dataset-availability").textContent = missing.length ? `Unavailable for ${ORGANISM.name}: ${missing.join(", ")}.` : "";
     const requestedView = location.hash.slice(1);
     if (["explorer", "protein", "matrix", "compare", "overlap", "go", "control-qc", "statistics", "methods"].includes(requestedView) && requestedView !== "explorer") switchView(requestedView);
     updateAtlasLoadingProgress(100);
   } catch (error) {
+    if (organismLeaving) return;
     console.error(error);
     $("#loading-screen").innerHTML = `<div class="empty-state"><div>!</div><h3>Atlas data could not load</h3><p>${escapeHTML(error.message)}</p></div>`;
     return;
   }
-  requestAnimationFrame(() => $("#loading-screen").classList.add("hidden"));
+  requestAnimationFrame(() => { if (!organismLeaving) $("#loading-screen").classList.add("hidden"); });
 }
 
 init();

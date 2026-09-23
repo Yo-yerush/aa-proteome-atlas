@@ -1,12 +1,8 @@
-// On-demand local TAIR descriptions, shared by every protein-row table.
-const GENE_DESCRIPTION_PATH = "annotations/arabidopsis/At_custom_description_file.csv.gz";
-const GENE_DESCRIPTION_FIELDS = [
-  ["Short_description", "Short description"],
-  ["Gene_description", "Gene description"],
-  ["Computational_description", "Computational description"],
-];
+// On-demand local descriptions, shared by every protein-row table.
+const GENE_DESCRIPTION_PATH = ORGANISM.descriptions;
+const GENE_DESCRIPTION_FIELDS = ORGANISM.descriptionFields;
 const GENE_DETAIL_FIELDS = [
-  ["note", "Notes"], ["Protein.families", "Protein families"],
+  ["note", "Notes"], ["Protein.families", "Protein families"], ["EC_number", "EC number"],
   ["GO.biological.process", "GO biological process"], ["GO.cellular.component", "GO cellular component"],
   ["GO.molecular.function", "GO molecular function"], ["AraCyc.Name", "AraCyc pathway"],
   ["AraCyc.Db", "AraCyc database"], ["EC", "EC number"], ["KEGG_pathway", "KEGG pathway"],
@@ -17,25 +13,19 @@ let geneDescriptionsPromise = null;
 let geneDescriptionRequest = 0;
 let geneDescriptionOpener = null;
 
-function tairGeneIds(value) {
-  // Description records are gene-level; transcript suffixes such as .1 map to the locus.
-  return [...new Set((String(value || "").match(/\bAT(?:[1-5]|C|M)G\d{5}(?:\.\d+)?\b/gi) || [])
-    .map((id) => id.toUpperCase().replace(/\.\d+$/, "")))];
-}
-
-function proteinTairIds(protein, row = null) {
+function proteinGeneIds(protein, row = null) {
   const annotation = state.annotations.get(protein);
-  return tairGeneIds([row?.tair_id, state.metadata.get(protein)?.tair_id,
-    annotation?.Araport, annotation?.["Gene Names"]].filter(Boolean).join(";"));
+  return organismGeneIds([row?.[ORGANISM.rowIdentifier], state.metadata.get(protein)?.[ORGANISM.rowIdentifier],
+    annotation?.[ORGANISM.annotationIdentifier], annotation?.["Gene Names"]].filter(Boolean).join(";"));
 }
 
 function proteinTableIdentity(protein, row = null) {
   const annotation = state.annotations.get(protein);
-  const ids = proteinTairIds(protein, row);
+  const ids = proteinGeneIds(protein, row);
   const symbol = geneSymbol(annotation);
-  const annotationLine = [araportLabel(annotation, "") || ids.join(" · "), symbol === "—" ? "" : symbol].filter(Boolean).join(" · ");
+  const annotationLine = [locusLabel(annotation, "") || ids.join(" · "), symbol === "—" ? "" : symbol].filter(Boolean).join(" · ");
   const uniprotURL = `https://www.uniprot.org/uniprotkb/${encodeURIComponent(protein)}/entry`;
-  return `<div class="protein-cell"><div class="protein-id-line"><a class="protein-uniprot-link" href="${escapeHTML(uniprotURL)}" target="_blank" rel="noopener noreferrer" title="Open ${escapeHTML(protein)} on UniProt">${escapeHTML(protein)}</a><button class="gene-info-button" type="button" data-gene-info="${escapeHTML(protein)}" data-tair-ids="${escapeHTML(ids.join(";"))}" aria-haspopup="dialog" aria-controls="gene-description-dialog" aria-label="Gene descriptions for ${escapeHTML(protein)}" title="View TAIR gene descriptions">i</button></div>${annotationLine ? `<small>${escapeHTML(annotationLine)}</small>` : ""}</div>`;
+  return `<div class="protein-cell"><div class="protein-id-line"><a class="protein-uniprot-link" href="${escapeHTML(uniprotURL)}" target="_blank" rel="noopener noreferrer" title="Open ${escapeHTML(protein)} on UniProt">${escapeHTML(protein)}</a><button class="gene-info-button" type="button" data-gene-info="${escapeHTML(protein)}" data-gene-ids="${escapeHTML(ids.join(";"))}" aria-haspopup="dialog" aria-controls="gene-description-dialog" aria-label="Gene descriptions for ${escapeHTML(protein)}" title="View gene descriptions">i</button></div>${annotationLine ? `<small>${escapeHTML(annotationLine)}</small>` : ""}</div>`;
 }
 
 function parseGeneDescriptionCSV(text) {
@@ -56,7 +46,7 @@ function parseGeneDescriptionCSV(text) {
         const value = values[index].trim();
         return [header, /^(?:NA|N\/A|null|nan)$/i.test(value) ? "" : value];
       }));
-      for (const id of tairGeneIds(row.gene_id)) {
+      for (const id of organismGeneIds(row.gene_id)) {
         if (!records.has(id)) records.set(id, []);
         records.get(id).push(row);
       }
@@ -77,14 +67,14 @@ function parseGeneDescriptionCSV(text) {
   }
   if (quoted) throw new Error("The annotation CSV contains an unterminated quoted field.");
   if (field.length || values.length) finishRow();
-  if (!headers || !records.size) throw new Error("No TAIR gene descriptions were found in the annotation CSV.");
+  if (!headers || !records.size) throw new Error(`No ${ORGANISM.name} gene descriptions were found in the annotation CSV.`);
   return records;
 }
 
 async function loadGeneDescriptions() {
   if (!geneDescriptionsPromise) {
     geneDescriptionsPromise = (async () => {
-      const response = await fetch(GENE_DESCRIPTION_PATH, { cache: "no-cache" });
+      const response = await atlasFetch(GENE_DESCRIPTION_PATH, { cache: "no-cache" });
       if (!response.ok) throw new Error(`Could not load ${GENE_DESCRIPTION_PATH} (HTTP ${response.status}).`);
       const bytes = new Uint8Array(await response.arrayBuffer());
       let text;
@@ -108,7 +98,7 @@ function geneDescriptionSections(ids, records) {
       const details = GENE_DETAIL_FIELDS.filter(([key]) => record[key]);
       const fields = (items) => items.map(([key, label]) => `<div><dt><strong>${escapeHTML(label)}</strong></dt><dd>${escapeHTML(record[key])}</dd></div>`).join("");
       const seenSymbols = new Set([String(record.Symbol || "").trim().toLowerCase()]);
-      const aliases = String(record.old_symbols || "").split(/[\s,;|]+/).filter((symbol) => {
+      const aliases = String(record.old_symbols || record.gene_synonym || "").split(/[\s,;|]+/).filter((symbol) => {
         const key = symbol.toLowerCase();
         if (!key || seenSymbols.has(key)) return false;
         seenSymbols.add(key);
@@ -124,17 +114,17 @@ async function openGeneDescriptions(protein, ids, opener) {
   const dialog = $("#gene-description-dialog"), body = $("#gene-description-body");
   const request = ++geneDescriptionRequest;
   geneDescriptionOpener = opener;
-  $("#gene-description-title").textContent = `${protein} · Gene descriptions`;
-  $("#gene-description-ids").textContent = ids.length ? `TAIR gene${ids.length > 1 ? "s" : ""}: ${ids.join(" · ")}` : "No mapped TAIR gene ID";
+  $("#gene-description-title").textContent = `${protein} · ${ORGANISM.name} gene descriptions`;
+  $("#gene-description-ids").textContent = ids.length ? `${ORGANISM.identifierLabel}: ${ids.join(" · ")}` : `No mapped ${ORGANISM.identifierLabel}`;
   body.setAttribute("aria-busy", ids.length ? "true" : "false");
-  body.innerHTML = `<p class="gene-description-missing">${ids.length ? "Loading gene descriptions…" : "No TAIR gene ID is mapped to this protein in the result or UniProt annotation files."}</p>`;
+  body.innerHTML = `<p class="gene-description-missing">${ids.length ? "Loading gene descriptions…" : `Unavailable — no ${ORGANISM.identifierLabel} is mapped to this protein in the result or UniProt annotation files.`}</p>`;
   if (!dialog.open) dialog.showModal();
   if (!ids.length) return;
   try {
     const records = await loadGeneDescriptions();
     if (request === geneDescriptionRequest && dialog.open) body.innerHTML = geneDescriptionSections(ids, records);
   } catch (error) {
-    if (request === geneDescriptionRequest && dialog.open) body.innerHTML = `<p class="gene-description-error">${escapeHTML(error.message)} Close and reopen this window to retry. Protein results are still available.</p>`;
+    if (request === geneDescriptionRequest && dialog.open) body.innerHTML = `<p class="gene-description-error">Unavailable — ${escapeHTML(error.message)} Close and reopen this window to retry. Protein results are still available.</p>`;
   } finally {
     if (request === geneDescriptionRequest) body.setAttribute("aria-busy", "false");
   }
@@ -145,8 +135,8 @@ function bindGeneDescriptionEvents() {
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-gene-info]");
     if (!button) return;
-    const ids = tairGeneIds(button.dataset.tairIds);
-    openGeneDescriptions(button.dataset.geneInfo, ids.length ? ids : proteinTairIds(button.dataset.geneInfo), button);
+    const ids = organismGeneIds(button.dataset.geneIds);
+    openGeneDescriptions(button.dataset.geneInfo, ids.length ? ids : proteinGeneIds(button.dataset.geneInfo), button);
   });
   $("#gene-description-close").addEventListener("click", () => dialog.close());
   dialog.addEventListener("click", (event) => {

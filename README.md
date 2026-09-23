@@ -8,7 +8,11 @@ Explore predicted amino-acid binding across the proteome.
 
 AA Proteome Interaction Atlas is an interactive web app for finding, comparing and investigating candidate proteins that may bind free amino acids. It brings together proteome-wide docking scores, predicted binding pockets, 3D ligand poses, functional annotations and experimental positive controls in one place.
 
-The current release contains **Arabidopsis thaliana** results for **20 canonical amino acids**, with **19 D-amino-acid datasets** available for stereochemical comparisons. Glycine has no distinct L/D pair.
+The current release contains **Arabidopsis thaliana** and **Escherichia coli** results, each with **20 canonical amino acids** and **19 D-amino-acid datasets** for stereochemical comparisons. Glycine has no distinct L/D pair.
+
+Choose an organism in the header. E. coli is the default for links without an organism parameter; `?organism=arabidopsis` opens Arabidopsis directly. Switching reloads the atlas with only that organism's data, preserves shared filters and the current tab, and clears protein searches, selected proteins/pockets and all analysis/viewer caches. Rankings, percentiles, normalization, GO backgrounds and experimental-control QC are computed separately within each organism. Optional files load on demand; missing datasets are shown as **Unavailable** without substituting another organism's data.
+
+E. coli uses the supplied gene symbols and `b`/`JW` locus identifiers, with product descriptions keyed by `b` locus ID. UniProt links remain available for both organisms. Download filenames begin with `arabidopsis_` or `ecoli_`; protein exports use `tair_id` for Arabidopsis and `gene_id` for E. coli.
 
 Use the atlas to move from a ranked protein list to a specific pocket, compare amino-acid preferences, explore enriched biological functions, and assess how the scoring performs against known controls.
 
@@ -135,12 +139,12 @@ python -m http.server 8765 --bind 127.0.0.1
 
 Open **http://127.0.0.1:8765/** in an up-to-date browser. The 3D viewer requires an internet connection for Mol* and AlphaFold structures.
 
-For GitHub Pages, publish `index.html`, `js/`, `css/`, `assets/`, `At_results/` and `annotations/arabidopsis/` together, preserving filename capitalization. See the [deployment instructions](docs/technical-guide.md#github-pages) for the required files and configuration. Confirm data-redistribution permissions and attribution before publishing.
+For GitHub Pages, publish `index.html`, `js/`, `css/`, `assets/`, `At_results/`, `Ec_results/`, `annotations/arabidopsis/` and `annotations/ecoli/` together, preserving filename capitalization. See the [deployment instructions](docs/technical-guide.md#github-pages) for the required files and configuration. Confirm data-redistribution permissions and attribution before publishing.
 
 ## Troubleshooting and development
 
 - **The app will not load when opening the HTML file directly:** use the local server above or HTTPS hosting; `file://` is not supported.
-- **Loading is slow:** all available score datasets are expanded in browser memory at startup. The progress bar tracks completed steps, not remaining time; the first 3D pocket view also loads additional coordinates.
+- **Loading is slow:** all available score datasets for the selected organism are expanded in browser memory at startup. The progress bar tracks completed steps, not remaining time; the first 3D pocket view also loads additional coordinates. The organism selector remains usable during loading.
 - **A structure or overlay is unavailable:** check the panel’s message, network access and matching data exports. Use the offered retry control; missing optional overlays do not invalidate the docking scores.
 - **A checksum fails after updating files:** publish the complete matching bundle and manifest. Do not mix exports or recompress electrostatics files without updating their checksums.
 

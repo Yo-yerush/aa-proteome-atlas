@@ -1,0 +1,228 @@
+{
+  "format": "aa-proteome-atlas-compact",
+  "version": 1,
+  "generator": "prepare_atlas_data.py",
+  "pockets": {
+    "file": "pockets.tsv.gz",
+    "rows": 6790,
+    "bytes": 455201,
+    "sha256": "e4c38b3741f3b2a2c6585e529bbdcb1307ee879693c792028c290cb38f903d3e"
+  },
+  "ligands": [
+    {
+      "file": "scores_dala.tsv.gz",
+      "rows": 6790,
+      "bytes": 94485,
+      "sha256": "35a513282d372fcb5b5c6f200e32afe34e906e716a9cb1410dd0ddeb78cca6db",
+      "code": "DALA",
+      "sources": {
+        "sfct": "sfct_dala_all_pockets.tsv",
+        "vina": "vina_dala_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_darg.tsv.gz",
+      "rows": 6790,
+      "bytes": 96164,
+      "sha256": "3a81dce6f326420e43b8f39f8564326d09f02dbeaaad9af8da82009c263c015e",
+      "code": "DARG",
+      "sources": {
+        "sfct": "sfct_darg_all_pockets.tsv",
+        "vina": "vina_darg_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dasn.tsv.gz",
+      "rows": 6790,
+      "bytes": 95824,
+      "sha256": "d75518e794958aa25bbcf2eb616eb32ef45e1f25a2c0ec671943f093d72a9771",
+      "code": "DASN",
+      "sources": {
+        "sfct": "sfct_dasn_all_pockets.tsv",
+        "vina": "vina_dasn_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dasp.tsv.gz",
+      "rows": 6790,
+      "bytes": 96430,
+      "sha256": "b010c6a5ac1fc4fe645ba45fc3e23ada3439c59666dd42452aa0b9de0a2a9549",
+      "code": "DASP",
+      "sources": {
+        "sfct": "sfct_dasp_all_pockets.tsv",
+        "vina": "vina_dasp_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dcys.tsv.gz",
+      "rows": 6790,
+      "bytes": 94310,
+      "sha256": "265fab2dff898df885421288b9acd6a4ccafd1b00e49e6dfb8cadaf0efdbe7e0",
+      "code": "DCYS",
+      "sources": {
+        "sfct": "sfct_dcys_all_pockets.tsv",
+        "vina": "vina_dcys_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dgln.tsv.gz",
+      "rows": 6790,
+      "bytes": 95989,
+      "sha256": "cc4a27a95a193b28939b1bc98ee49a2d2c677b894c9679c098e8aa9df969d522",
+      "code": "DGLN",
+      "sources": {
+        "sfct": "sfct_dgln_all_pockets.tsv",
+        "vina": "vina_dgln_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dglu.tsv.gz",
+      "rows": 6790,
+      "bytes": 96448,
+      "sha256": "be1347baa0b6d5b1a9373c7804a7787169a52ef377f58b76a2a3be1841af678c",
+      "code": "DGLU",
+      "sources": {
+        "sfct": "sfct_dglu_all_pockets.tsv",
+        "vina": "vina_dglu_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dhis.tsv.gz",
+      "rows": 6790,
+      "bytes": 95837,
+      "sha256": "f4ab5ce2c244fb945ee39ca1fc6aa13e0bd7b51dee3bbff9f1128305a7f1c565",
+      "code": "DHIS",
+      "sources": {
+        "sfct": "sfct_dhis_all_pockets.tsv",
+        "vina": "vina_dhis_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dile.tsv.gz",
+      "rows": 6790,
+      "bytes": 94889,
+      "sha256": "2822dbe67cad254d805452f9f4aa257dd19493b625525d8c9e859b5c819be8ac",
+      "code": "DILE",
+      "sources": {
+        "sfct": "sfct_dile_all_pockets.tsv",
+        "vina": "vina_dile_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dleu.tsv.gz",
+      "rows": 6790,
+      "bytes": 95029,
+      "sha256": "62210ae665d445949722ab558e5a66059a8d448762c158e331760402e1b09883",
+      "code": "DLEU",
+      "sources": {
+        "sfct": "sfct_dleu_all_pockets.tsv",
+        "vina": "vina_dleu_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dlys.tsv.gz",
+      "rows": 6790,
+      "bytes": 95219,
+      "sha256": "65ad49320004fac634d81e66657f9f4217842bc12d8d9da477a29586f730bc7c",
+      "code": "DLYS",
+      "sources": {
+        "sfct": "sfct_dlys_all_pockets.tsv",
+        "vina": "vina_dlys_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dmet.tsv.gz",
+      "rows": 6790,
+      "bytes": 94303,
+      "sha256": "1a330d4f815420681314afd0be87f94addb2ff0fe8d9e2fad83c4e55195b57f5",
+      "code": "DMET",
+      "sources": {
+        "sfct": "sfct_dmet_all_pockets.tsv",
+        "vina": "vina_dmet_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dphe.tsv.gz",
+      "rows": 6790,
+      "bytes": 96929,
+      "sha256": "d815052a6af74b8042948904f7885e2f0ec301d3320e4a9c6c4052bbad994c76",
+      "code": "DPHE",
+      "sources": {
+        "sfct": "sfct_dphe_all_pockets.tsv",
+        "vina": "vina_dphe_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dpro.tsv.gz",
+      "rows": 6790,
+      "bytes": 95086,
+      "sha256": "f7591c13be298709994e70b613f0fad4c5166da26988dc4e83d9aeebc22e3e29",
+      "code": "DPRO",
+      "sources": {
+        "sfct": "sfct_dpro_all_pockets.tsv",
+        "vina": "vina_dpro_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dser.tsv.gz",
+      "rows": 6790,
+      "bytes": 95841,
+      "sha256": "4a42a448d208b8d52d141642c7c86f0265cd6a67609ebcd2385a90f7a21ffa92",
+      "code": "DSER",
+      "sources": {
+        "sfct": "sfct_dser_all_pockets.tsv",
+        "vina": "vina_dser_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dthr.tsv.gz",
+      "rows": 6790,
+      "bytes": 96182,
+      "sha256": "bf8af04c8edab72b41b2f316e583f3100913c61c5994888fd99066d9241ff68f",
+      "code": "DTHR",
+      "sources": {
+        "sfct": "sfct_dthr_all_pockets.tsv",
+        "vina": "vina_dthr_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dtrp.tsv.gz",
+      "rows": 6790,
+      "bytes": 97898,
+      "sha256": "362962ebcb63e80a3d5ab63b99c332a81f4ab6329dff9514449bb54e7685339c",
+      "code": "DTRP",
+      "sources": {
+        "sfct": "sfct_dtrp_all_pockets.tsv",
+        "vina": "vina_dtrp_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dtyr.tsv.gz",
+      "rows": 6790,
+      "bytes": 97161,
+      "sha256": "85526f51fa4341981a499932c3250258826056b48dd64fa00680e34677bc4a5f",
+      "code": "DTYR",
+      "sources": {
+        "sfct": "sfct_dtyr_all_pockets.tsv",
+        "vina": "vina_dtyr_all_pockets.tsv"
+      }
+    },
+    {
+      "file": "scores_dval.tsv.gz",
+      "rows": 6790,
+      "bytes": 95029,
+      "sha256": "88c3e4ef52072d6d7e465ec8f6ec65817fdb392d736f1f3b5bf08378f1801155",
+      "code": "DVAL",
+      "sources": {
+        "sfct": "sfct_dval_all_pockets.tsv",
+        "vina": "vina_dval_all_pockets.tsv"
+      }
+    }
+  ],
+  "input_bytes": 65882828,
+  "protein_aa_pocket_rows": 129010,
+  "score_precision": "Source score strings retained without rounding or recalculation",
+  "quality_filters_applied": false,
+  "failed_rows_retained": true,
+  "sha256_basis": "Uncompressed UTF-8 TSV bytes"
+}

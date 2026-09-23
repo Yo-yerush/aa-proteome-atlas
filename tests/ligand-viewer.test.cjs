@@ -14,7 +14,10 @@ function node(selector) {
 const warnings = [];
 const context = vm.createContext({ console: { ...console, warn: (...args) => warnings.push(args) },
   document: { querySelector: node, querySelectorAll: () => [] }, Blob, Response, TextDecoder, DecompressionStream });
-for (const file of ['ligand-viewer.js', 'compact-data.js', 'app.js']) {
+// These fixtures intentionally exercise the Arabidopsis bundle.
+context.URLSearchParams = URLSearchParams;
+context.location = { ...context.location, search: '?organism=arabidopsis' };
+for (const file of ['organisms.js', 'ligand-viewer.js', 'compact-data.js', 'app.js']) {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', file), 'utf8').replace(/\binit\(\);\s*$/, ''), context);
 }
 const run = source => vm.runInContext(source, context);

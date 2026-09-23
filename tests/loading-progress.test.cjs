@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
-const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8').replace(/\binit\(\);\s*$/, '');
+const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'organisms.js'), 'utf8') + '\n' + fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8').replace(/\binit\(\);\s*$/, '');
 function fixture(options = {}) {
   const nodes = new Map(), values = [], errors = [], loaded = [];
   let inFlight = 0, maximumInFlight = 0, hidden = false;
@@ -39,7 +39,7 @@ function fixture(options = {}) {
     return [{ uniprot_id: 'P-' + aa.code }];
   }
   vm.runInContext(source, context);
-  vm.runInContext(`readURLState=()=>{};populateAASelects=()=>{};syncControls=()=>{};bindEvents=()=>{};
+  vm.runInContext(`initializeOrganismUI=()=>{};readURLState=()=>{};populateAASelects=()=>{};syncControls=()=>{};bindEvents=()=>{};
     renderExplorer=stubRender;loadUniProtAnnotations=stubAnnotations;loadResultRows=stubRows;`, context);
   return { run: code => vm.runInContext(code, context), values, loaded, errors, nodes, screen,
     get hidden() { return hidden; }, get maximumInFlight() { return maximumInFlight; } };

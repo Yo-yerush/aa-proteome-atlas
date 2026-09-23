@@ -2,7 +2,32 @@
 
 Setup, data formats, testing and implementation details for AA Proteome Interaction Atlas. For the app introduction, main features and analysis settings, see the [README](../README.md). Commands below are run from the app folder, not from `docs/`.
 
-A static web app for exploring Arabidopsis amino-acid docking results across 20 canonical amino acids, with 19 D-AA datasets kept separately for stereochemical comparisons. Glycine has no distinct L/D pair. No build step, package installation or backend is required; the optional 3D viewer loads Mol* and AlphaFold structures from external services.
+A static web app for exploring Arabidopsis and E. coli amino-acid docking results across 20 canonical amino acids per organism, with 19 D-AA datasets kept separately for stereochemical comparisons. Glycine has no distinct L/D pair. No build step, package installation or backend is required; the optional 3D viewer loads Mol* and AlphaFold structures from external services.
+
+## Organism configuration and isolation
+
+`js/organisms.js` is loaded before all other app scripts. It defines display names, result roots, annotation paths, identifier columns, locus normalization and description fields. Missing, unknown or invalid `organism` URL values resolve to E. coli. Use `?organism=arabidopsis` for Arabidopsis; the app preserves this parameter when updating filters and changing tabs. Explicit `?organism=ecoli` links also work; the default organism parameter may be omitted when updating the URL.
+
+| Resource | Arabidopsis | E. coli |
+| --- | --- | --- |
+| Results root | `At_results/` | `Ec_results/` |
+| Annotation root | `annotations/arabidopsis/` | `annotations/ecoli/` |
+| UniProt identifiers | `arabidopsis_uniprot.tsv.gz` | `ecoli_uniprot.tsv.gz` |
+| GO mappings | `arabidopsis_uniprot_go.tsv.gz` | `ecoli_uniprot_go.tsv.gz` |
+| Descriptions | `At_custom_description_file.csv.gz` | `Ec_custom_description_file.csv.gz` |
+| Pocket identifier field | `tair_id` | `gene_id` (additional final metadata column) |
+| UniProt locus field | `Araport` | `Gene Names (ordered locus)` |
+| Description fields | Short, gene and computational descriptions | `product`, `Symbol`, `gene_synonym`, `EC_number` |
+
+Both organisms use `strict_WT_single_protein_AA_controls.tsv` for Control QC. The nonredundant control table is supplied but is not the active source. E. coli description matching normalizes `b####` locus IDs to lowercase; Arabidopsis retains its TAIR transcript-to-locus mapping. Searches include supplied gene symbols, entry names and locus IDs; external protein links always use UniProt.
+
+Switching uses **document navigation**, creating a fresh JavaScript state and Mol* viewer. Shared URL filters and the current tab carry over; `q`, protein and pocket selections are discarded. An AbortController cancels local dataset requests as navigation starts, and late downloads and URL updates are suppressed. The selector remains usable during startup and rapid switches. A restored history document with an aborted session reloads. No organism data is cached in persistent browser storage; ordinary HTTP caching remains separated by resource URL. All rankings, normalizations, GO/QC populations and viewer caches belong to the selected document. A pocket ID is meaningful only with its organism and L/D bundle, and all viewer sources enforce that provenance.
+
+The supplied E. coli manifests contain 6,790 pockets across 3,088 models, 20 L score tables and 19 D score tables. The app retains successful results using the existing rules: 3,085 proteins have a successful result, and ALA has 6,780 retained pocket rows. Optional exports include all 20 L ligand-position and pose-electrostatics tables, pocket points, electrostatics metadata and per-model point potentials. D ligand-position/potential exports are absent and are never substituted from L. Checksums, coordinate fingerprints and scientific calculations are unchanged. Missing optional files produce Unavailable messages; missing or corrupt required score bundles remain load errors.
+
+All download filenames carry the organism ID. Explorer/profile/GO protein exports use the corresponding `tair_id` or `gene_id` column. Existing Arabidopsis paths in the detailed format examples below illustrate the same layout under `Ec_results/` for E. coli; runtime paths always come from the selected configuration.
+
+Run `node --test tests/*.test.cjs` for regression checks, including real-file checks in `tests/organisms.test.cjs`. The optional `tests/organism-browser-smoke.cjs` checks all tabs, downloads, both switching directions, rapid switches, mobile layout and forced optional-file 404s against a local server. It uses Node 22+ and a local Chromium/Edge debugging endpoint (default port 9222); start the browser with an isolated temporary profile and software WebGL when running headlessly. Set `ATLAS_URL` or `ATLAS_CDP_URL` to override defaults. Screenshots and downloads go into the OS temporary directory.
 
 ## Run locally
 
@@ -16,7 +41,7 @@ Then open <http://127.0.0.1:8765/>. Double-clicking `index.html` is no longer su
 
 ## GitHub Pages
 
-Publish this folder as a GitHub Pages site, keeping `index.html`, `js/`, `css/`, `assets/`, `At_results/`, and `annotations/arabidopsis/` together. The annotation files used by the app are:
+Publish this folder as a GitHub Pages site, keeping `index.html`, `js/`, `css/`, `assets/`, `At_results/`, `Ec_results/`, `annotations/arabidopsis/` and `annotations/ecoli/` together. The Arabidopsis annotation files used by the app are listed below; publish the E. coli equivalents from the configuration table above as well:
 
 - `arabidopsis_uniprot.tsv.gz`: protein/gene identifiers, loaded at startup.
 - `At_custom_description_file.csv.gz`: gene-description dialogs, loaded on demand.

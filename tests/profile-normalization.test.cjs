@@ -27,9 +27,9 @@ const context = vm.createContext({ console, URLSearchParams, Blob,
   location: { search: '', pathname: '/', hash: '' },
   history: { replaceState: (_, __, url) => { sharedURL = url; } },
   XMLSerializer: class { serializeToString(el) { return serialize(el); } },
-  proteinTairIds: () => [],
+  proteinGeneIds: () => [],
 });
-const source = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'organisms.js'), 'utf8') + '\n' + fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
 vm.runInContext(source.replace(/\binit\(\);\s*$/, ''), context);
 const run = text => vm.runInContext(text, context);
 const plain = value => JSON.parse(JSON.stringify(value));

@@ -23,7 +23,7 @@ async function pocketPotentialSHA256(bytes) {
 }
 
 async function readPocketPotentialFile(path, checksum, gzip = true) {
-  const response = await fetch(path, { cache: checksum ? "default" : "no-cache" });
+  const response = await atlasFetch(path, { cache: checksum ? "default" : "no-cache" });
   if (!response.ok) throw new Error(`Missing electrostatics file (HTTP ${response.status}): ${path.split("?")[0]}`);
   const bytes = new Uint8Array(await response.arrayBuffer());
   // This pipeline hashes compressed bytes, unlike the compact score export's text hashes.

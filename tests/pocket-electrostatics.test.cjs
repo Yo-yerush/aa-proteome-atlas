@@ -17,7 +17,10 @@ const warnings = [];
 const context = vm.createContext({ console: { ...console, warn: (...args) => warnings.push(args) },
   document: { querySelector: node, querySelectorAll: () => [] },
   crypto: webcrypto, TextEncoder, TextDecoder, Blob, Response, DecompressionStream });
-for (const file of ['ligand-viewer.js', 'pocket-electrostatics.js', 'pocket-cloud.js', 'app.js']) {
+// These fixtures intentionally exercise the Arabidopsis bundle.
+context.URLSearchParams = URLSearchParams;
+context.location = { ...context.location, search: '?organism=arabidopsis' };
+for (const file of ['organisms.js', 'ligand-viewer.js', 'pocket-electrostatics.js', 'pocket-cloud.js', 'app.js']) {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', file), 'utf8').replace(/\binit\(\);\s*$/, ''), context);
 }
 const run = source => vm.runInContext(source, context);

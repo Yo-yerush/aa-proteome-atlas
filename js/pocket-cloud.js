@@ -159,7 +159,7 @@ async function prepareMolstarPocketCloud(viewer, request) {
     setPocketCloudStatus("missing", "No matching P2Rank point bundle for this result");
     return;
   }
-  setPocketCloudStatus("loading", "Loading P2Rank points (shared download, about 21 MB)…");
+  setPocketCloudStatus("loading", "Loading P2Rank points for this organism…");
   try {
     // The large download must not block the model/pocket/ligand update queue.
     const table = await loadPocketPointTable(path);

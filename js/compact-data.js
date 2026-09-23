@@ -29,7 +29,9 @@ async function readCompactTable(entry, fields, directory) {
     }
   }
   const headers = text.split("\n", 1)[0].replace(/\r$/, "").split("\t");
+  // E. coli adds gene_id after the shared v1 metadata columns; score columns remain exact.
   const expected = ["pocket_id", ...fields];
+  if (fields === COMPACT_METADATA_FIELDS && headers.at(-1) === "gene_id") expected.push("gene_id");
   if (headers.length !== expected.length || headers.some((field, i) => field !== expected[i])) {
     throw new Error(`Invalid compact TSV headers: ${entry.file}. Regenerate it with prepare_atlas_data.py`);
   }
@@ -40,7 +42,7 @@ async function readCompactTable(entry, fields, directory) {
 
 async function loadCompactBundle(directory, allowedLigands) {
   const path = `${directory}/manifest.json`;
-  const response = await fetch(path, { cache: "no-cache" });
+  const response = await atlasFetch(path, { cache: "no-cache" });
   // Only absence triggers legacy loading. A broken compact bundle is never silently ignored.
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Could not load ${path} (HTTP ${response.status})`);

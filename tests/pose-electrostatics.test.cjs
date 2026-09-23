@@ -28,7 +28,10 @@ const context = vm.createContext({ console: { ...console, warn: (...args) => war
   downloadText: (name, text) => downloads.push({ name, text }),
   showToast: text => toasts.push(text),
 });
-for (const file of ['pocket-electrostatics.js', 'pose-electrostatics.js', 'app.js']) {
+// These fixtures intentionally exercise the Arabidopsis bundle.
+context.URLSearchParams = URLSearchParams;
+context.location = { ...context.location, search: '?organism=arabidopsis' };
+for (const file of ['organisms.js', 'pocket-electrostatics.js', 'pose-electrostatics.js', 'app.js']) {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', file), 'utf8').replace(/\binit\(\);\s*$/, ''), context);
 }
 const run = source => vm.runInContext(source, context);
