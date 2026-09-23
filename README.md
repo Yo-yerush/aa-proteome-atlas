@@ -4,7 +4,7 @@
 
 Explore predicted amino-acid binding across the proteome.
 
-**[Open the web app →](https://yo-yerush.github.io/aa-proteome-atlas/)**
+**Open the web app →** **[yo-yerush.github.io/aa-proteome-atlas/](https://yo-yerush.github.io/aa-proteome-atlas/)**
 
 AA Proteome Interaction Atlas is an interactive web app for finding, comparing and investigating candidate proteins that may bind free amino acids. It brings together proteome-wide docking scores, predicted binding pockets, 3D ligand poses, functional annotations and experimental positive controls in one place.
 
