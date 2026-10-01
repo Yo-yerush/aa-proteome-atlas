@@ -28,7 +28,9 @@ function pairedAAResults(options) {
   const rows = x.rows.filter((row) => y.byProtein.has(row.uniprot_id)).map((row) => {
     const other = y.byProtein.get(row.uniprot_id);
     return { protein: row.uniprot_id, x: row[options.metric], y: other[options.metric], delta: other[options.metric] - row[options.metric],
-      pocketX: row.pocket, pocketY: other.pocket, percentileX: x.percentile.get(row.uniprot_id), percentileY: y.percentile.get(row.uniprot_id) };
+      pocketX: row.pocket, pocketY: other.pocket, modelX: row.protein, modelY: other.protein,
+      pocketLabelX: pocketLabel(row), pocketLabelY: pocketLabel(other),
+      percentileX: x.percentile.get(row.uniprot_id), percentileY: y.percentile.get(row.uniprot_id) };
   });
   return { rows, missingX: y.rows.length - rows.length, missingY: x.rows.length - rows.length };
 }
@@ -86,10 +88,10 @@ function macroStatistics(options) {
     const eligible = (state.rawByAA.get(aa) || []).filter((row) => qualityPasses(row, options) && hasUsableScore(row, options.metric));
     const counts = new Map();
     for (const row of eligible) {
-      retainedPockets.add(`${row.uniprot_id}|${row.pocket}`);
+      retainedPockets.add(pocketKey(row));
       proteins.add(row.uniprot_id);
       if (!counts.has(row.uniprot_id)) counts.set(row.uniprot_id, new Set());
-      counts.get(row.uniprot_id).add(row.pocket);
+      counts.get(row.uniprot_id).add(pocketKey(row));
     }
     pocketsPerPair.push(...[...counts.values()].map((set) => set.size));
     const chosen = options.unit === "all" ? eligible : ranking.rows;
@@ -278,7 +280,7 @@ function renderCompareTable() {
   const start = analysisPagination("compare", rows.length);
   const heading = (key, label) => `<th aria-sort="${options.sort === key ? options.direction === 1 ? "ascending" : "descending" : "none"}"><button type="button" class="sort-button" data-compare-sort="${key}">${escapeHTML(label)} ${options.sort === key ? options.direction === 1 ? "↑" : "↓" : "↕"}</button></th>`;
   $("#compare-head").innerHTML = `<tr>${heading("protein", "Protein")}${heading("x", `${options.x} score`)}${heading("y", `${options.y} score`)}${heading("delta", "Δ (Y − X)")}<th>${options.x} pocket</th><th>${options.y} pocket</th>${heading("percentileX", `${options.x} top %`)}${heading("percentileY", `${options.y} top %`)}<th><span class="sr-only">Protein profile</span></th></tr>`;
-  $("#compare-body").innerHTML = rows.slice(start, start + ANALYSIS_PAGE_SIZE).map((row) => `<tr><td>${analysisProteinCell(row.protein)}</td><td>${fmt(row.x)}</td><td>${fmt(row.y)}</td><td class="${row.delta > 0 ? "positive" : row.delta < 0 ? "negative" : ""}">${fmt(row.delta)}</td><td>${escapeHTML(row.pocketX)}</td><td>${escapeHTML(row.pocketY)}</td><td>${fmt(row.percentileX, 2)}%</td><td>${fmt(row.percentileY, 2)}%</td><td>${analysisProteinProfileButton(row.protein)}</td></tr>`).join("") || `<tr><td colspan="9" class="analysis-empty">No paired proteins match. Try clearing the table filters or lowering QC thresholds.</td></tr>`;
+  $("#compare-body").innerHTML = rows.slice(start, start + ANALYSIS_PAGE_SIZE).map((row) => `<tr><td>${analysisProteinCell(row.protein)}</td><td>${fmt(row.x)}</td><td>${fmt(row.y)}</td><td class="${row.delta > 0 ? "positive" : row.delta < 0 ? "negative" : ""}">${fmt(row.delta)}</td><td>${escapeHTML(row.pocketLabelX)}</td><td>${escapeHTML(row.pocketLabelY)}</td><td>${fmt(row.percentileX, 2)}%</td><td>${fmt(row.percentileY, 2)}%</td><td>${analysisProteinProfileButton(row.protein)}</td></tr>`).join("") || `<tr><td colspan="9" class="analysis-empty">No paired proteins match. Try clearing the table filters or lowering QC thresholds.</td></tr>`;
 }
 
 function overlapGroupLabel(key, aas) {
@@ -348,7 +350,7 @@ function renderStatistics() {
   analysisResults.statisticsKey = key;
   const pooled = result.pooled || (result.pooled = numericSummary(result.records.map(({ row }) => row[options.metric])));
   const allAA = options.aa === "ALL";
-  $("#statistics-population-note").textContent = `Successful finite ${METRICS[options.metric].short} scores, after P2Rank ≥ ${options.p2} and pLDDT ≥ ${options.plddt}. ${options.unit === "best" ? "One best pocket per protein × AA." : "All passing pocket rows; proteins with more pockets contribute more observations."} ${allAA ? "All 20 canonical AAs are pooled (D-AA controls excluded); the same protein contributes separately for each available AA. These observations are not independent proteins." : "The selected AA is analyzed across the proteome."} Retained-pocket counts are unique protein × pocket IDs, not duplicated across AAs.`;
+  $("#statistics-population-note").textContent = `Successful finite ${METRICS[options.metric].short} scores, after P2Rank ≥ ${options.p2} and pLDDT ≥ ${options.plddt}. ${options.unit === "best" ? "One best pocket per protein × AA." : "All passing pocket rows; proteins with more pockets contribute more observations."} ${allAA ? "All 20 canonical AAs are pooled (D-AA controls excluded); the same protein contributes separately for each available AA. These observations are not independent proteins." : "The selected AA is analyzed across the proteome."} Retained-pocket counts use full model × pocket identities, counted once across AAs. Overlapping fragments remain separate model pockets.`;
   $("#statistics-summary").innerHTML = analysisCards([
     ["Proteins", result.proteins.toLocaleString(), "At least one eligible result"],
     ["Retained pockets", result.pockets.toLocaleString(), "Unique QC-passing pockets"],
@@ -379,7 +381,7 @@ function statisticsCorrelationPairs(result, correlation) {
   const pairs = [];
   for (const { aa, row } of result.records) {
     const x = row[correlation.xKey], y = row[correlation.yKey];
-    if (Number.isFinite(x) && Number.isFinite(y)) pairs.push({ x, y, protein: row.uniprot_id, aa, pocket: row.pocket });
+    if (Number.isFinite(x) && Number.isFinite(y)) pairs.push({ x, y, protein: row.uniprot_id, aa, pocket: pocketLabel(row) });
   }
   return pairs;
 }
@@ -555,8 +557,8 @@ function bindAnalysisEvents() {
   $("#compare-download").addEventListener("click", () => {
     const options = analysisState.compare;
     downloadText(`aa_comparison_${options.x}_${options.y}_${METRICS[options.metric].short}.tsv`, analysisTSV(
-      ["uniprot_id", "gene_symbol", "aa_x", "aa_y", "metric", "score_x", "score_y", "delta_y_minus_x", "pocket_x", "pocket_y", "qc_percentile_x", "qc_percentile_y", "p2rank_min", "plddt_min"],
-      filteredComparison().map((row) => [row.protein, geneSymbol(state.annotations.get(row.protein)), options.x, options.y, options.metric, row.x, row.y, row.delta, row.pocketX, row.pocketY, row.percentileX, row.percentileY, options.p2, options.plddt])));
+      ["uniprot_id", "gene_symbol", "aa_x", "aa_y", "metric", "score_x", "score_y", "delta_y_minus_x", "pocket_x", "pocket_y", "model_x", "model_y", "qc_percentile_x", "qc_percentile_y", "p2rank_min", "plddt_min"],
+      filteredComparison().map((row) => [row.protein, geneSymbol(state.annotations.get(row.protein)), options.x, options.y, options.metric, row.x, row.y, row.delta, row.pocketX, row.pocketY, row.modelX, row.modelY, row.percentileX, row.percentileY, options.p2, options.plddt])));
   });
   $("#overlap-download").addEventListener("click", () => {
     const options = analysisState.overlap;

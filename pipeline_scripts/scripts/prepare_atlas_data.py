@@ -102,7 +102,7 @@ def check_same_pocket(previous: dict, row: dict, aa: str, path: Path) -> None:
     consistent &= all(same_number(previous.get(key, ""), row.get(key, "")) for key in NUMERIC_MATCH)
     consistent &= sorted(previous.get("residue_ids", "").split()) == sorted(row.get("residue_ids", "").split())
     if not consistent:
-        raise ExportError(f"{aa} / {row['uniprot_id']} / {row['pocket']}: Vina/SFCT model or pocket metadata mismatch ({path.name})")
+        raise ExportError(f"{aa} / {row['uniprot_id']} / {row['protein']} / {row['pocket']}: Vina/SFCT model or pocket metadata mismatch ({path.name})")
 
 
 def merge_ligand(aa: str, files: dict[str, Path | None]) -> dict:
@@ -114,7 +114,9 @@ def merge_ligand(aa: str, files: dict[str, Path | None]) -> dict:
             continue
         seen = set()
         for row in source_rows(path, source, aa):
-            key = (row["uniprot_id"], row["pocket"])
+            # Pocket names are local to an exact model (including fragment/version).
+            # UniProt remains the biological protein used for atlas ranking.
+            key = (row["uniprot_id"], row["protein"], row["pocket"])
             if key in seen:
                 raise ExportError(f"{path}: duplicate protein/pocket: {' / '.join(key)}")
             seen.add(key)

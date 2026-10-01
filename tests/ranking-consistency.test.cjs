@@ -113,7 +113,7 @@ run(`resetFixture();
 `);
 assert.deepEqual(Array.from(run(`getProteinProfile('P1','vina_affinity','2').map(row=>row.code)`)), ['ALA', 'LEU']);
 run(`const originalSwitchView=switchView; switchView=()=>{}; selectProtein('P1','2');`);
-assert.equal(run('state.profilePocket'), '2');
+assert.equal(run('state.profilePocket'), run(`pocketKey(state.rawByAA.get('ALA')[1])`));
 assert.equal(run('state.profilePocketAnchor'), run(`state.rawByAA.get('ALA')[1]`));
 assert.deepEqual(Array.from(run(`getProteinProfile('P1','vina_affinity',state.profilePocket).map(row=>row.value)`)), [-7, -6]);
 run('switchView=originalSwitchView;');

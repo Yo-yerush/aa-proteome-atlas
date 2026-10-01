@@ -91,6 +91,8 @@ async function loadControlQCData() {
 }
 
 function controlQCPocket(row) {
+  // Other fragments need an explicit model-residue → UniProt mapping. Never infer
+  // offsets from the fragment number or treat local numbering as canonical.
   if (!row || !String(row.protein || "").startsWith(`AF-${row.uniprot_id}-F1-model_`)) return null;
   const tokens = String(row.residue_ids || "").trim().split(/\s+/);
   if (!tokens.length || !tokens.every((token) => /^A_[1-9]\d*$/.test(token))) return null;
@@ -170,7 +172,7 @@ function calculateControlQC(data, options) {
     const eligible = percentiles.every(Number.isFinite);
     let dockingStatus = !raw.length ? "No successful result (missing / failed)" : !passing.length ? "No pocket passes QC"
       : !eligible ? "Missing finite score(s)" : "Eligible for all scores";
-    const matchStatus = !mapped ? "Unknown: no confirmed residue mapping" : !allPockets.length ? "Unknown: no usable retained pocket"
+    const matchStatus = !mapped ? "Unknown: no confirmed residue mapping" : !allPockets.length ? "Unavailable: no retained pocket with supported residue mapping"
       : !matched ? "No pocket meets site-overlap threshold" : !matchedRows.length ? "Matched pocket has no successful target-AA result"
       : !matchedPassing.length ? "Matched pocket fails QC" : "Control site matched";
     if (mode === "matched" && !eligible && matchStatus !== "Control site matched") dockingStatus = matchStatus;
@@ -282,7 +284,7 @@ function controlQCPDBLink(pdb) {
 
 function controlQCStereoCell(row) {
   if (!dControlCode(row.aa)) return '<td><small class="analysis-gene">Not applicable (glycine)</small></td>';
-  return `<td>${row.stereo.map((pair, i) => `<small class="analysis-gene" title="${pair ? `L: ${fmt(pair.lRow[CONTROL_QC_METRICS[i].key])} (${escapeHTML(pair.lRow.pocket)}); D: ${fmt(pair.dRow[CONTROL_QC_METRICS[i].key])} (${escapeHTML(pair.dRow.pocket)})` : "Successful QC-passing L/D pair required"}">${CONTROL_QC_METRICS[i].label}: ${pair ? fmt(pair.delta) : "Missing"}</small>`).join("")}</td>`;
+  return `<td>${row.stereo.map((pair, i) => `<small class="analysis-gene" title="${pair ? `L: ${fmt(pair.lRow[CONTROL_QC_METRICS[i].key])} (${escapeHTML(pocketLabel(pair.lRow))}); D: ${fmt(pair.dRow[CONTROL_QC_METRICS[i].key])} (${escapeHTML(pocketLabel(pair.dRow))})` : "Successful QC-passing L/D pair required"}">${CONTROL_QC_METRICS[i].label}: ${pair ? fmt(pair.delta) : "Missing"}</small>`).join("")}</td>`;
 }
 
 function renderControlQCTable(result, options = controlQCState) {
@@ -294,7 +296,7 @@ function renderControlQCTable(result, options = controlQCState) {
   $("#control-qc-head").innerHTML = `<tr>${["protein", "pdb", "aa", ...CONTROL_QC_METRICS.map(({ id }) => id), "docking"].map(header).join("")}${stereoHeader}<th scope="col" aria-sort="${selected?.startsWith("site_") ? sortDirection : "none"}">Analyzed-site coverage<div class="control-qc-site-sorts">${CONTROL_QC_METRICS.map(({ id, label }) => sortButton(`site_${id}`, label)).join("")}</div></th>${header("match")}<th scope="col"><span class="sr-only">Protein profile</span></th></tr>`;
   const rows = controlQCOrderedRows(result, options);
   $("#control-qc-table-note").textContent = `Showing ${rows.length} of ${result.rows.length} controls for the selected AA set, using the same denominator as the recovery plot. ${options.denominator === "all" ? "All known controls includes unmatched, QC-excluded and missing results as shown in the plot denominator." : "Only controls with usable scores for all four metrics after the selected pocket mode and quality filters are shown."}`;
-  $("#control-qc-body").innerHTML = rows.map((row) => `<tr><td>${proteinTableIdentity(row.protein)}</td><td>${controlQCPDBLink(row.pdb)}</td><td>${escapeHTML(row.aa)}</td>${row.percentiles.map((p, i) => `<td>${Number.isFinite(p) ? `${fmt(p, 2)}%<small class="analysis-gene">${escapeHTML(row.scoreRows[i].pocket)} · score ${fmt(row.scoreRows[i][CONTROL_QC_METRICS[i].key])}</small>` : "—"}</td>`).join("")}<td>${escapeHTML(row.dockingStatus)}</td>${controlQCStereoCell(row)}<td>${row.scoreOverlaps.map((overlap, i) => `<small class="analysis-gene">${CONTROL_QC_METRICS[i].label}: ${overlap ? `${fmt(100 * overlap.fraction, 1)}% (${overlap.hits.length}/${row.positions.length})` : "Missing"}</small>`).join("")}</td><td>${row.matched ? `${escapeHTML(row.matched.row.pocket)} · ${fmt(100 * row.matched.fraction, 1)}%` : "—"}<small class="analysis-gene">${escapeHTML(row.matchStatus)}</small></td><td>${controlQCProfileButton(row)}</td></tr>`).join("") || '<tr><td colspan="12" class="analysis-empty">No controls match the current QC settings and recovery denominator.</td></tr>';
+  $("#control-qc-body").innerHTML = rows.map((row) => `<tr><td>${proteinTableIdentity(row.protein)}</td><td>${controlQCPDBLink(row.pdb)}</td><td>${escapeHTML(row.aa)}</td>${row.percentiles.map((p, i) => `<td>${Number.isFinite(p) ? `${fmt(p, 2)}%<small class="analysis-gene">${escapeHTML(pocketLabel(row.scoreRows[i]))} · score ${fmt(row.scoreRows[i][CONTROL_QC_METRICS[i].key])}</small>` : "—"}</td>`).join("")}<td>${escapeHTML(row.dockingStatus)}</td>${controlQCStereoCell(row)}<td>${row.scoreOverlaps.map((overlap, i) => `<small class="analysis-gene">${CONTROL_QC_METRICS[i].label}: ${overlap ? `${fmt(100 * overlap.fraction, 1)}% (${overlap.hits.length}/${row.positions.length})` : "Unavailable"}</small>`).join("")}</td><td>${row.matched ? `${escapeHTML(pocketLabel(row.matched.row))} · ${fmt(100 * row.matched.fraction, 1)}%` : "—"}<small class="analysis-gene">${escapeHTML(row.matchStatus)}</small></td><td>${controlQCProfileButton(row)}</td></tr>`).join("") || '<tr><td colspan="12" class="analysis-empty">No controls match the current QC settings and recovery denominator.</td></tr>';
 }
 
 function renderControlQCResults(result, options) {
@@ -352,10 +354,10 @@ function downloadControlQC() {
   const recovery = controlQCRecovery(result, options.denominator);
   const siteCounts = CONTROL_QC_METRICS.map((_, i) => result.rows.filter((row) => row.scoreOverlaps[i]).length);
   const headers = ["aa", "uniprot_id", "pdb_id", "pocket_selection", "docking_status", "eligible_all_scores", "recovery_denominator", "recovery_n", "included_in_recovery_denominator",
-    ...CONTROL_QC_METRICS.flatMap(({ key }) => [`${key}_score`, `${key}_pocket`, `${key}_proteome_n`, `${key}_percentile`, `${key}_top_1`, `${key}_top_5`, `${key}_top_10`, `${key}_matched_positions`, `${key}_site_coverage_fraction`, `${key}_site_captured`, `${key}_site_evaluable_n`, `${key}_d_score`, `${key}_d_pocket`, `${key}_d_minus_l_delta`, `${key}_l_preferred`]),
+    ...CONTROL_QC_METRICS.flatMap(({ key }) => [`${key}_score`, `${key}_pocket`, `${key}_model`, `${key}_proteome_n`, `${key}_percentile`, `${key}_top_1`, `${key}_top_5`, `${key}_top_10`, `${key}_matched_positions`, `${key}_site_coverage_fraction`, `${key}_site_captured`, `${key}_site_evaluable_n`, `${key}_d_score`, `${key}_d_pocket`, `${key}_d_model`, `${key}_d_minus_l_delta`, `${key}_l_preferred`]),
     "control_match_status", "mapped_experimental_positions", "site_threshold", "control_matched_pocket", "control_matched_model", "control_matched_positions", "control_matched_fraction", "experimental_residue_count", "percentile_reference", "p2rank_min", "plddt_min", "source"];
   const rows = controlQCOrderedRows(result, options).map((row) => [row.aa, row.protein, row.pdb, result.options.pocketMode, row.dockingStatus, row.eligible, options.denominator, recovery.n, options.denominator === "all" || row.eligible,
-    ...CONTROL_QC_METRICS.flatMap(({ key }, i) => [row.scoreRows[i]?.[key], row.scoreRows[i]?.pocket, row.populations[i], row.percentiles[i], ...[1, 5, 10].map((tier) => Number.isFinite(row.percentiles[i]) ? row.percentiles[i] <= tier : null), row.scoreOverlaps[i]?.hits.join(";"), row.scoreOverlaps[i]?.fraction, row.scoreOverlaps[i] ? controlQCCaptured(row.scoreOverlaps[i], options.overlap) : null, siteCounts[i], row.stereo[i]?.dRow[key], row.stereo[i]?.dRow.pocket, row.stereo[i]?.delta, row.stereo[i] ? row.stereo[i].delta > 0 : null]),
+    ...CONTROL_QC_METRICS.flatMap(({ key }, i) => [row.scoreRows[i]?.[key], row.scoreRows[i]?.pocket, row.scoreRows[i]?.protein, row.populations[i], row.percentiles[i], ...[1, 5, 10].map((tier) => Number.isFinite(row.percentiles[i]) ? row.percentiles[i] <= tier : null), row.scoreOverlaps[i]?.hits.join(";"), row.scoreOverlaps[i]?.fraction, row.scoreOverlaps[i] ? controlQCCaptured(row.scoreOverlaps[i], options.overlap) : null, siteCounts[i], row.stereo[i]?.dRow[key], row.stereo[i]?.dRow.pocket, row.stereo[i]?.dRow.protein, row.stereo[i]?.delta, row.stereo[i] ? row.stereo[i].delta > 0 : null]),
     row.matchStatus, row.positions.join(";"), options.overlap === "any" ? "at_least_one_residue" : `at_least_${options.overlap}_percent`, row.matched?.row.pocket, row.matched?.row.protein, row.matched?.hits.join(";"), row.matched?.fraction, row.mapped ? row.positions.length : null, "other_proteins_best_qc_pocket_scores", result.options.p2, result.options.plddt, CONTROL_QC_PATH]);
   downloadText(`positive_control_qc_${options.aa}_${result.options.pocketMode}_overlap_${options.overlap}_p2_${options.p2}_plddt_${options.plddt}.tsv`, analysisTSV(headers, rows));
 }

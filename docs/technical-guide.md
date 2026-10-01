@@ -2,30 +2,34 @@
 
 Setup, data formats, testing and implementation details for AA Proteome Interaction Atlas. For the app introduction, main features and analysis settings, see the [README](../README.md). Commands below are run from the app folder, not from `docs/`.
 
-A static web app for exploring Arabidopsis and E. coli amino-acid docking results across 20 canonical amino acids per organism, with 19 D-AA datasets kept separately for stereochemical comparisons. Glycine has no distinct L/D pair. No build step, package installation or backend is required; the optional 3D viewer loads Mol* and AlphaFold structures from external services.
+A static web app for exploring Arabidopsis, E. coli and human docking results across 20 canonical amino acids per organism. Arabidopsis and E. coli include 19 separate D-AA datasets; the human release is L-only. Glycine has no distinct L/D pair. No build step, package installation or backend is required; the optional 3D viewer loads Mol* and AlphaFold structures from external services.
 
 ## Organism configuration and isolation
 
-`js/organisms.js` is loaded before all other app scripts. It defines display names, result roots, annotation paths, identifier columns, locus normalization and description fields. Missing, unknown or invalid `organism` URL values resolve to E. coli. Use `?organism=arabidopsis` for Arabidopsis; the app preserves this parameter when updating filters and changing tabs. Explicit `?organism=ecoli` links also work; the default organism parameter may be omitted when updating the URL.
+`js/organisms.js` is loaded before all other app scripts. It defines display names, result roots, annotation paths, identifier columns, locus normalization and description fields. Missing, unknown or invalid `organism` URL values resolve to E. coli. Use `?organism=arabidopsis` for Arabidopsis or `?organism=human` for Human; the app preserves this parameter when updating filters and changing tabs. Explicit `?organism=ecoli` links also work; the default organism parameter may be omitted when updating the URL.
 
-| Resource | Arabidopsis | E. coli |
-| --- | --- | --- |
-| Results root | `At_results/` | `Ec_results/` |
-| Annotation root | `annotations/arabidopsis/` | `annotations/ecoli/` |
-| UniProt identifiers | `arabidopsis_uniprot.tsv.gz` | `ecoli_uniprot.tsv.gz` |
-| GO mappings | `arabidopsis_uniprot_go.tsv.gz` | `ecoli_uniprot_go.tsv.gz` |
-| Descriptions | `At_custom_description_file.csv.gz` | `Ec_custom_description_file.csv.gz` |
-| Pocket identifier field | `tair_id` | `gene_id` (additional final metadata column) |
-| UniProt locus field | `Araport` | `Gene Names (ordered locus)` |
-| Description fields | Short, gene and computational descriptions | `product`, `Symbol`, `gene_synonym`, `EC_number` |
+| Resource | Arabidopsis | E. coli | Human |
+| --- | --- | --- | --- |
+| Results root | `At_results/` | `Ec_results/` | `Hs_results/` |
+| Annotation root | `annotations/arabidopsis/` | `annotations/ecoli/` | `annotations/human/` |
+| UniProt identifiers | `arabidopsis_uniprot.tsv.gz` | `ecoli_uniprot.tsv.gz` | `human_uniprot.tsv.gz` |
+| GO mappings | `arabidopsis_uniprot_go.tsv.gz` | `ecoli_uniprot_go.tsv.gz` | `human_uniprot_go.tsv.gz` |
+| Descriptions | `At_custom_description_file.csv.gz` | `Ec_custom_description_file.csv.gz` | `Hs_custom_description_file.csv.gz` |
+| Pocket identifier field | `tair_id` | `gene_id` (locus) | `gene_id` (symbol) |
+| UniProt identifier field | `Araport` | `Gene Names (ordered locus)` | `Gene Names (primary)` |
+| Description fields | Short, gene and computational descriptions | Product, symbols, synonyms, EC number | Protein name, function, Ensembl ID, GO, KEGG |
 
-Both organisms use `strict_WT_single_protein_AA_controls.tsv` for Control QC. The nonredundant control table is supplied but is not the active source. E. coli description matching normalizes `b####` locus IDs to lowercase; Arabidopsis retains its TAIR transcript-to-locus mapping. Searches include supplied gene symbols, entry names and locus IDs; external protein links always use UniProt.
+All organisms use `strict_WT_single_protein_AA_controls.tsv` for Control QC. The nonredundant control table is supplied but is not the active source. E. coli description matching normalizes `b####` locus IDs to lowercase; Arabidopsis retains its TAIR transcript-to-locus mapping. Searches include supplied gene symbols, entry names and locus IDs; external protein links always use UniProt.
 
 Switching uses **document navigation**, creating a fresh JavaScript state and Mol* viewer. Shared URL filters and the current tab carry over; `q`, protein and pocket selections are discarded. An AbortController cancels local dataset requests as navigation starts, and late downloads and URL updates are suppressed. The selector remains usable during startup and rapid switches. A restored history document with an aborted session reloads. No organism data is cached in persistent browser storage; ordinary HTTP caching remains separated by resource URL. All rankings, normalizations, GO/QC populations and viewer caches belong to the selected document. A pocket ID is meaningful only with its organism and L/D bundle, and all viewer sources enforce that provenance.
 
 The supplied E. coli manifests contain 6,790 pockets across 3,088 models, 20 L score tables and 19 D score tables. The app retains successful results using the existing rules: 3,085 proteins have a successful result, and ALA has 6,780 retained pocket rows. Optional exports include all 20 L ligand-position and pose-electrostatics tables, pocket points, electrostatics metadata and per-model point potentials. D ligand-position/potential exports are absent and are never substituted from L. Checksums, coordinate fingerprints and scientific calculations are unchanged. Missing optional files produce Unavailable messages; missing or corrupt required score bundles remain load errors.
 
-All download filenames carry the organism ID. Explorer/profile/GO protein exports use the corresponding `tair_id` or `gene_id` column. Existing Arabidopsis paths in the detailed format examples below illustrate the same layout under `Ec_results/` for E. coli; runtime paths always come from the selected configuration.
+The human bundle contains 33,875 pocket metadata records for 13,799 models and 11,910 UniProt accessions, with 20 L score tables and no D bundle. These are metadata counts, not QC-passing protein counts. Ligand positions, pocket points and electrostatics are supplied. The existing exact-model fragment identity and per-UniProt ranking rules apply. Human site-overlap QC retains the documented residue-mapping limits.
+
+Human result `gene_id` values are symbols, while description `gene_id` values are Ensembl IDs. `descriptionLookup` configures separate UniProt and symbol indexes. Exact accessions (including isoform suffixes) take precedence; fallback symbols must identify a single normalized Ensembl gene. Ambiguous/missing matches are unavailable. Description details are configurable, so human GO/KEGG fields do not change the other organisms' dialogs. The existing CSV parser and on-demand loading are reused.
+
+All download filenames carry the organism ID. Explorer/profile/GO protein exports use the corresponding `tair_id` or `gene_id` column. Existing Arabidopsis paths in the detailed format examples below illustrate the same layout under `Ec_results/` for E. coli and `Hs_results/` for Human; runtime paths always come from the selected configuration.
 
 Run `node --test tests/*.test.cjs` for regression checks, including real-file checks in `tests/organisms.test.cjs`. The optional `tests/organism-browser-smoke.cjs` checks all tabs, downloads, both switching directions, rapid switches, mobile layout and forced optional-file 404s against a local server. It uses Node 22+ and a local Chromium/Edge debugging endpoint (default port 9222); start the browser with an isolated temporary profile and software WebGL when running headlessly. Set `ATLAS_URL` or `ATLAS_CDP_URL` to override defaults. Screenshots and downloads go into the OS temporary directory.
 
@@ -41,7 +45,7 @@ Then open <http://127.0.0.1:8765/>. Double-clicking `index.html` is no longer su
 
 ## GitHub Pages
 
-Publish this folder as a GitHub Pages site, keeping `index.html`, `js/`, `css/`, `assets/`, `At_results/`, `Ec_results/`, `annotations/arabidopsis/` and `annotations/ecoli/` together. The Arabidopsis annotation files used by the app are listed below; publish the E. coli equivalents from the configuration table above as well:
+Publish this folder as a GitHub Pages site, keeping `index.html`, `js/`, `css/`, `assets/`, `At_results/`, `Ec_results/`, `Hs_results/`, `annotations/arabidopsis/`, `annotations/ecoli/` and `annotations/human/` together. The Arabidopsis annotation files used by the app are listed below; publish the E. coli and human equivalents from the configuration table above as well:
 
 - `arabidopsis_uniprot.tsv.gz`: protein/gene identifiers, loaded at startup.
 - `At_custom_description_file.csv.gz`: gene-description dialogs, loaded on demand.
@@ -66,6 +70,8 @@ Gene descriptions, GO annotations, experimental controls, ligand coordinates, po
 
 ## Regression checks
 
+For a focused human integration check, run `node tests/human-organism.test.cjs`. It reads the human ALA bundle and annotations, checks fragment selection, optional data provenance, downloads, and organism navigation without loading every score table.
+
 Run the existing `tests/*.test.cjs` scripts from the app folder with Node.js; no additional packages are required. They use in-memory fixtures/mocked browser interfaces and read local files without modifying the app or datasets.
 
 PowerShell:
@@ -84,6 +90,8 @@ for test in tests/*.test.cjs; do
     node "$test" || exit 1
 done
 ```
+
+`fragment-pockets.test.cjs` covers repeated pocket names across fragments, exact selection, rankings, downloads and L/D matching. Run `python -B tests/test_prepare_atlas_data.py` for the standard-library exporter regressions (temporary files only).
 
 `ranking-consistency.test.cjs` covers shared QC-first ranking, GO selection, inspected-pocket comparisons, L/D filtering and model identity. Other scripts cover profile normalization, loading progress, statistics plotting, ligand poses, protein representations/colors, pocket clouds and electrostatics.
 
@@ -126,6 +134,18 @@ At_results/
     scores_dval.tsv.gz
 ```
 
+### Multiple models or fragments for one protein
+
+Pocket identity is `(uniprot_id, protein, pocket)` within an organism, where `protein` is the **full model name**, including fragment and version. For example, `AF-A2VEC9-F1-model_v6 / pocket3` and `AF-A2VEC9-F20-model_v6 / pocket3` are separate records. Both compact and legacy loaders use this identity. Duplicate rows for the same exact model/pocket within an AA/source still fail validation, as do inconsistent Vina/SFCT pocket metadata. Compact format v1 already carries the required model field; `pocket_id` remains local to its bundle and is not a cross-AA or cross-configuration identifier.
+
+Rankings, percentiles, AA normalization and GO backgrounds count each UniProt accession once, choosing its best QC-passing pocket across all available models. Pocket statistics count model-specific pockets; overlapping fragments are not deduplicated into inferred biological sites. Inspected profiles and L/D comparisons require the same full model, pocket, residue set and center. Default best-pocket L/D comparisons still choose the two sides independently. Tables label the fragment/version, and pocket-bearing downloads include the full model.
+
+This differs from upstream collector `*_best_per_protein.tsv` files and their filtering/comparison summaries, which group by the pipeline's `protein` column (the full model name). Those upstream calculations are unchanged. Always export from `*_all_pockets.tsv`, retaining all fragments and source statuses. L-only exports work without D datasets.
+
+After updating the exporter, rerun `prepare_atlas_data.py` with your original arguments. The identity fix does not require rerunning docking or SFCT. If pocket IDs or manifests change, regenerate and publish the associated ligand positions, pocket points and electrostatics exports together with the compact bundle. Exact-model structure/asset availability is still required; another fragment or model version is never substituted.
+
+Experimental site-overlap QC currently supports the existing F1/chain-A numbering convention. Other fragments require verified model-residue-to-UniProt mapping and remain unavailable for site overlap; their valid scores still participate in best-pocket score recovery. Electrostatics with status `fragment_only` is usable with an explicit partial-model label, preserving the exported status and explaining that the field excludes unmodeled sequence. `unreliable_fragment_boundary` and other failed statuses remain unavailable.
+
 `pockets.tsv.gz` stores the shared protein/pocket metadata and residue lists once per distinct metadata record. Each AA score file refers to these records by `pocket_id` and retains independent Vina affinity/status, the SFCT-selected pose's Vina score, SFCT, supplied Combined, pose index, pose count, and SFCT status. Exact source score strings are retained: **no rounding, rescoring, quality filtering, or best-pocket reduction**. Failed rows and source-specific statuses remain in the export; the app applies its existing metric-specific success rules when loading. Per-AA row order is preserved in the files; the app uses deterministic UniProt ordering for tied protein scores. Distinct metadata snapshots receive separate IDs instead of silently rounding or overwriting them.
 
 The manifest records format version, input size, row counts, filenames, and SHA-256 hashes of the uncompressed TSVs. Gzip output is deterministic. The script validates all sources and prepares files in a temporary directory before publishing the output, with the manifest replaced last. The app validates schemas, counts and pocket references, and verifies SHA-256 where browser cryptography is available (including GitHub Pages and localhost). On ordinary insecure HTTP, checksums may be unavailable; schema/count/reference checks still apply. Publish the **complete bundle together**, not individual score files from different exports. Regenerate after any source result changes; a present compact bundle takes precedence over raw folders.
@@ -147,7 +167,7 @@ This fallback supports the original 20-AA plus D-MET layout. Use the split compa
 - Commit/push the updated files, wait for GitHub Pages to publish, and reload the app. Locally, simply replace the files and reload. Result requests revalidate the browser cache.
 - Without a compact manifest, no JavaScript data bundle, manual decompression, or data-generation step is required. If you use compact loading, rerun the exporter after updating the full-size files. Both annotation files are decompressed in the browser; already-decoded HTTP responses are also supported.
 
-`At_results/` contains the real Arabidopsis docking results supplied for the atlas. The loader matches the two sources by `uniprot_id` and `pocket`, checks that the protein model, P2Rank rank/probability, pocket mean pLDDT, center and residue IDs agree (allowing numerical roundoff), and keeps the union of pockets with success in either source. Duplicate pocket keys or conflicting metadata produce an explicit error instead of silently mixing results. Source files are never modified.
+`At_results/` contains the real Arabidopsis docking results supplied for the atlas. The loader matches the two sources by `uniprot_id`, full `protein` model name and `pocket`, checks that the protein model, P2Rank rank/probability, pocket mean pLDDT, center and residue IDs agree (allowing numerical roundoff), and keeps the union of pockets with success in either source. Duplicate pocket keys or conflicting metadata produce an explicit error instead of silently mixing results. Source files are never modified.
 
 **Vina** throughout the app now uses `vina_<aa>_affinity` from the Vina file, normalized internally to `vina_affinity`. It is the independently selected best Vina pose score within that pocket. The SFCT file's original `sfct_vina_score` is retained separately, never substituted for missing independent Vina results. Old shared URLs with `metric=sfct_vina_score` still select the Vina option, now backed by the independent result.
 
@@ -272,7 +292,7 @@ The pipeline defines `qphi_kT = sum_i (q_i/e) * [phi_receptor(r_i)/(kT/e)]`, inc
 
 Loading is asynchronous and independent of the core atlas/structure. Explorer shares the compressed electrostatics manifest with the viewer but does not fetch the pocket summary, point clouds, or ligand-coordinate tables. It verifies the exact current compact L manifest against the electrostatics bundle, matches its pocket-export hash to each row's provenance, and validates the selected AA's compressed pose-file checksum, headers, row count, unique pocket IDs, units and Vina pose identity. Only the selected AA table is requested, with a two-table cache. L values are never substituted for D or legacy IDs. Publish the pose files with their matching manifest; the compressed-byte checksum/HTTPS hosting requirements described below also apply here.
 
-Only `status = success` with a finite `qphi_kT` is displayed. Failed, missing, clashing, mismatched, or blank values remain **—**, with an explanation on hover; an actual zero remains numeric zero. Optional-data errors do not remove docking rows or block the app, and failed downloads offer **Retry qφ (kT)**. CSV/TSV downloads wait for the selected-AA table to finish loading and include the entire filtered list, not just the current page. They append `qphi_kT` (full exported precision), `qphi_status`, `qphi_vina_pose`, and `qphi_error`; unavailable values are blank with explicit status. No source data files are modified.
+Only `status = success` or `fragment_only` with a finite `qphi_kT` is displayed. Fragment-only values carry a visible label and retain that status in downloads; their receptor field excludes unmodeled sequence. Boundary failures remain unavailable. Failed, missing, clashing, mismatched, or blank values remain **—**, with an explanation on hover; an actual zero remains numeric zero. Optional-data errors do not remove docking rows or block the app, and failed downloads offer **Retry qφ (kT)**. CSV/TSV downloads wait for the selected-AA table to finish loading and include the entire filtered list, not just the current page. They append `qphi_kT` (full exported precision), `qphi_status`, `qphi_vina_pose`, and `qphi_error`; unavailable values are blank with explicit status. No source data files are modified.
 
 ## External structure viewer
 

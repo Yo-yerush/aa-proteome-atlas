@@ -319,7 +319,7 @@ function renderGOProteins() {
     const competitorNote = Number.isFinite(comparison.nearCompetitors)
       ? `Other AA best successful score ≤ ${options.aa} score + ${fmt(METRICS[options.metric].nearWindow, 2)} (${METRICS[options.metric].label}). Count / available other canonical AAs. Target AA and D-AA controls excluded. Like Explorer, other-AA scores pass the same QC thresholds before best-pocket selection; they are not tier-filtered.`
       : "Missing comparison: no successful target score or no successful scores for other canonical AAs. Missing results are not counted as noncompetitive.";
-    return `<tr><td>${proteinTableIdentity(row.uniprot_id, row)}</td><td>${fmt(row[options.metric])}</td><td>${fmt(row.proteome_percentile, 2)}%</td><td class="numeric" title="${escapeHTML(competitorNote)}">${competitors}</td><td>${escapeHTML(row.pocket)}</td><td>${fmt(row.probability)}</td><td>${fmt(row.mean_pocket_plddt, 1)}</td><td>${count || "Missing"}</td><td><button type="button" class="open-row" data-go-protein="${escapeHTML(row.uniprot_id)}" aria-label="Open ${escapeHTML(row.uniprot_id)} protein profile" title="Open protein profile">→</button></td></tr>`;
+    return `<tr><td>${proteinTableIdentity(row.uniprot_id, row)}</td><td>${fmt(row[options.metric])}</td><td>${fmt(row.proteome_percentile, 2)}%</td><td class="numeric" title="${escapeHTML(competitorNote)}">${competitors}</td><td>${escapeHTML(pocketLabel(row))}</td><td>${fmt(row.probability)}</td><td>${fmt(row.mean_pocket_plddt, 1)}</td><td>${count || "Missing"}</td><td><button type="button" class="open-row" data-go-protein="${escapeHTML(row.uniprot_id)}" aria-label="Open ${escapeHTML(row.uniprot_id)} protein profile" title="Open protein profile">→</button></td></tr>`;
   }).join("") || '<tr><td colspan="9" class="analysis-empty">No proteins meet this selection.</td></tr>';
 }
 
@@ -398,11 +398,11 @@ function downloadGOTerms(delimiter) {
 function downloadGOProteins(background = false) {
   if (!goResult) return;
   const options = goResult.options;
-  const headers = ["uniprot_id", "gene_symbol", ORGANISM.rowIdentifier, "target_aa", "tier_percent", "ranking_score", "score", "pocket", "proteome_percentile", "competitive_aas", "available_other_aa_count", "competitive_aa_tolerance", "p2rank_probability", "pocket_mean_plddt", "p2rank_min", "plddt_min", "max_competitive_aas", "require_l_preference", "background_mode", "bp_terms", "mf_terms", "cc_terms", "inspected_go_term", "annotation_source"];
+  const headers = ["uniprot_id", "gene_symbol", ORGANISM.rowIdentifier, "target_aa", "tier_percent", "ranking_score", "score", "pocket", "model", "proteome_percentile", "competitive_aas", "available_other_aa_count", "competitive_aa_tolerance", "p2rank_probability", "pocket_mean_plddt", "p2rank_min", "plddt_min", "max_competitive_aas", "require_l_preference", "background_mode", "bp_terms", "mf_terms", "cc_terms", "inspected_go_term", "annotation_source"];
   const rows = (background ? goResult.background : goDisplayedProteins()).map((row) => {
     const annotation = goResult.data.proteins.get(row.uniprot_id);
     const comparison = getComparison(row.uniprot_id, options.aa, options.metric, null, options);
-    return [row.uniprot_id, geneSymbol(state.annotations.get(row.uniprot_id)), row[ORGANISM.rowIdentifier], options.aa, options.top, options.metric, row[options.metric], row.pocket, row.proteome_percentile, comparison.nearCompetitors, comparison.otherCount, METRICS[options.metric].nearWindow, row.probability, row.mean_pocket_plddt, options.p2rank, options.plddt, options.maxCompetitors, goRequiresLPreference(options), options.background,
+    return [row.uniprot_id, geneSymbol(state.annotations.get(row.uniprot_id)), row[ORGANISM.rowIdentifier], options.aa, options.top, options.metric, row[options.metric], row.pocket, row.protein, row.proteome_percentile, comparison.nearCompetitors, comparison.otherCount, METRICS[options.metric].nearWindow, row.probability, row.mean_pocket_plddt, options.p2rank, options.plddt, options.maxCompetitors, goRequiresLPreference(options), options.background,
       ...GO_ASPECTS.map(({ code }) => [...(annotation?.[code] || [])].join(";")), background ? "" : goState.term || "", GO_ANNOTATION_PATH];
   });
   downloadText(`go_${options.aa.toLowerCase()}_${background ? "background" : goState.term?.replace(":", "_") || `top${options.top}_selected`}_bg_${options.background}${goRequiresLPreference(options) ? "_ld" : ""}_proteins.tsv`, goDelimited(headers, rows, "\t"));

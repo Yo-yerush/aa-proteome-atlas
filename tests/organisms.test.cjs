@@ -34,7 +34,9 @@ function fixture(search = '', missing = () => false) {
   return { run, requests, downloads, navigations, nodes, context };
 }
 
-(async () => {
+module.exports = { fixture };
+
+if (require.main === module) (async () => {
   for (const search of ['', '?organism=unknown', '?organism=__proto__', '?organism=ecoli']) {
     assert.equal(fixture(search).run('ORGANISM.id'), 'ecoli');
   }

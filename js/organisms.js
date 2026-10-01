@@ -24,6 +24,23 @@ const ORGANISMS = Object.freeze({
     normalizeGene: (id) => id.toLowerCase(),
     descriptionFields: [["product", "Product"]],
   }),
+  human: Object.freeze({
+    id: "human", name: "Human", scientificName: "Homo sapiens",
+    resultsDirectory: "Hs_results",
+    annotations: "annotations/human/human_uniprot.tsv.gz",
+    descriptions: "annotations/human/Hs_custom_description_file.csv.gz",
+    go: "annotations/human/human_uniprot_go.tsv.gz",
+    controls: "annotations/human/strict_WT_single_protein_AA_controls.tsv",
+    rowIdentifier: "gene_id", annotationIdentifier: "Gene Names (primary)", identifierLabel: "Gene symbol",
+    genePattern: /\b[A-Za-z][A-Za-z0-9_.-]*\b/g,
+    normalizeGene: (id) => id.toUpperCase().replace(/^(ENSG\d+)\.\d+$/, "$1"),
+    searchPlaceholder: "UniProt, gene symbol or alias…",
+    descriptionLookup: { proteinField: "UniProt", symbolField: "Symbol", identifierLabel: "Ensembl gene ID" },
+    descriptionFields: [["Protein_name", "Protein name"], ["Function_description", "Function"]],
+    descriptionDetailFields: [["UniProt", "UniProt"], ["UniProt_entry", "UniProt entry"],
+      ["GO_biological_process", "GO biological process"], ["GO_molecular_function", "GO molecular function"],
+      ["GO_cellular_component", "GO cellular component"], ["KEGG_pathway", "KEGG pathway"]],
+  }),
 });
 
 const DEFAULT_ORGANISM_ID = "ecoli";
@@ -79,9 +96,10 @@ function initializeOrganismUI() {
     const key = element.dataset.organismPath;
     element.textContent = key === "results" ? RESULTS_DIRECTORY + (element.dataset.pathSuffix || "") : ORGANISM[key];
   }
-  document.querySelector("#protein-search").placeholder = `UniProt, ${ORGANISM.identifierLabel}, gene symbol…`;
-  document.querySelector("#profile-protein-search").placeholder = `Protein / gene / ${ORGANISM.identifierLabel}`;
-  document.querySelector("#profile-protein-search-status").textContent = `Type a UniProt ID, gene symbol or ${ORGANISM.identifierLabel}.`;
+  document.querySelector("#protein-search").placeholder = ORGANISM.searchPlaceholder || `UniProt, ${ORGANISM.identifierLabel}, gene symbol…`;
+  document.querySelector("#profile-protein-search").placeholder = ORGANISM.searchPlaceholder || `Protein / gene / ${ORGANISM.identifierLabel}`;
+  document.querySelector("#profile-protein-search-status").textContent = ORGANISM.searchPlaceholder
+    ? "Type a UniProt ID, gene symbol or alias." : `Type a UniProt ID, gene symbol or ${ORGANISM.identifierLabel}.`;
   document.title = `AA Proteome Atlas · ${ORGANISM.name}`;
   document.querySelector(".loading-title").textContent = `Loading ${ORGANISM.name} atlas…`;
   // A restored page must not retain an aborted session from a previous switch.

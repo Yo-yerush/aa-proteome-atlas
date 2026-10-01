@@ -193,7 +193,8 @@ function locusLabel(annotation, fallback = `No ${ORGANISM.identifierLabel}`) {
 }
 
 function geneSymbol(annotation) {
-  return annotationValue(annotation, "Gene Names", "").split(/\s+/).filter(Boolean)[0] || "—";
+  return (annotationValue(annotation, "Gene Names (primary)", "") || annotationValue(annotation, "Gene Names", ""))
+    .split(/\s+/).filter(Boolean)[0] || "—";
 }
 
 function annotationSearchText(protein) {
@@ -309,12 +310,35 @@ function addPocketProteomePosition(row, aa, metric, options = state) {
   };
 }
 
+// Semantic identity within this organism. Compact pocket_id is only bundle-local;
+// the same model/pocket can have different IDs in other AA metadata snapshots.
+function pocketKey(row) {
+  return JSON.stringify([row.uniprot_id, row.protein, row.pocket]);
+}
+
+function pocketLabel(row) {
+  if (!row) return "—";
+  const model = String(row.protein || "");
+  const suffix = model.match(/-(F\d+)-model_(\S+)$/);
+  return `${row.pocket}${model ? ` · ${suffix ? `${suffix[1]} ${suffix[2]}` : model}` : ""}`;
+}
+
+function profilePocketFilename() {
+  const row = state.profilePocketAnchor;
+  return row ? `${row.protein}_${row.pocket}`.replace(/[^a-zA-Z0-9_.-]/g, "_") : "best_pockets";
+}
+
 function profilePocketAnchor(protein, pocket, targetAA = state.aa) {
   if (!pocket) return null;
   if (typeof pocket === "object") return pocket.uniprot_id === protein ? pocket : null;
   const pinned = state.profilePocketAnchor;
-  if (pinned?.uniprot_id === protein && pinned.pocket === pocket) return pinned;
-  return (state.rawByAA.get(targetAA) || []).find((row) => row.uniprot_id === protein && row.pocket === pocket) || null;
+  if (pinned?.uniprot_id === protein && pocketKey(pinned) === pocket) return pinned;
+  const rows = (state.rawByAA.get(targetAA) || []).filter((row) => row.uniprot_id === protein);
+  const exact = rows.find((row) => pocketKey(row) === pocket);
+  if (exact) return exact;
+  // Retain unambiguous name-only callers; never guess a fragment from row order.
+  const named = rows.filter((row) => row.pocket === pocket);
+  return named.length === 1 ? named[0] : null;
 }
 
 function getProteinProfile(protein, metric = state.metric, pocket = null, options = state, targetAA = state.aa) {
@@ -457,7 +481,7 @@ function sortValue(row, key) {
   if (key === "qphi_kT") return poseElectrostaticsForRow(row).value;
   const values = {
     protein: `${row.uniprot_id} ${geneLabel(row)}`,
-    pocket: row.pocket,
+    pocket: pocketLabel(row),
     score: row[state.metric],
     aa_rank: row.comparison.target?.aa_rank,
     competitors: row.comparison.nearCompetitors,
@@ -671,7 +695,7 @@ function renderResults(rows) {
     const percentile = row.proteome_percentile;
     return `<tr>
       <td>${proteinTableIdentity(row.uniprot_id, row)}</td>
-      <td><span class="pocket-tag ${row.isBestPocket ? "" : "secondary-pocket"}">${escapeHTML(row.pocket)}</span>${row.isBestPocket && state.pocketMode === "all" ? '<span class="best-pocket-label">best</span>' : ""}</td>
+      <td><span class="pocket-tag ${row.isBestPocket ? "" : "secondary-pocket"}">${escapeHTML(pocketLabel(row))}</span>${row.isBestPocket && state.pocketMode === "all" ? '<span class="best-pocket-label">best</span>' : ""}</td>
       <td class="numeric score-value">${fmt(row[state.metric])}</td>
       ${poseElectrostaticsCell(row)}
       <td class="numeric">${aaRank} / ${comparison.profile.length}</td>
@@ -682,7 +706,7 @@ function renderResults(rows) {
       <td class="numeric ${comparison.delta >= 0 ? "positive" : "negative"}">${fmt(comparison.delta)}</td>
       <td class="numeric ${comparison.z >= 0 ? "positive" : "negative"}">${fmt(comparison.z, 2)}</td>
       <td class="numeric stereo-cell ${comparison.stereoControl?.delta >= 0 ? "positive" : "negative"}" ${hasDControl() ? "" : "hidden"}>${comparison.stereoControl ? fmt(comparison.stereoControl.delta) : "—"}</td>
-      <td><button class="open-row" type="button" data-protein="${escapeHTML(row.uniprot_id)}" data-pocket="${escapeHTML(row.pocket)}" aria-label="Open ${escapeHTML(row.uniprot_id)} ${escapeHTML(row.pocket)} profile">→</button></td>
+      <td><button class="open-row" type="button" data-protein="${escapeHTML(row.uniprot_id)}" data-pocket="${escapeHTML(pocketKey(row))}" aria-label="Open ${escapeHTML(row.uniprot_id)} ${escapeHTML(pocketLabel(row))} profile">→</button></td>
     </tr>`;
   }).join("");
   const rowType = state.pocketMode === "best" ? (totalRows === 1 ? "protein" : "proteins") : (totalRows === 1 ? "pocket row" : "pocket rows");
@@ -816,11 +840,11 @@ function renderExplorer() {
 }
 
 function selectProtein(protein, pocket = null) {
+  const anchor = profilePocketAnchor(protein, pocket);
+  if (pocket && !anchor) return; // Ambiguous or stale selection must not open another model.
   state.selectedProtein = protein;
-  const anchor = typeof pocket === "object" ? pocket
-    : pocket && (state.rawByAA.get(state.aa) || []).find((row) => row.uniprot_id === protein && row.pocket === pocket);
-  state.selectedPocket = anchor?.pocket || null;
-  state.profilePocket = anchor?.pocket || null;
+  state.selectedPocket = anchor ? pocketKey(anchor) : null;
+  state.profilePocket = state.selectedPocket;
   state.profilePocketAnchor = anchor || null;
   switchView("protein");
 }
@@ -847,7 +871,8 @@ function renderProfileProteinSearch() {
   const query = $("#profile-protein-search").value;
   const matches = findProfileProteins(query);
   $("#profile-protein-options").innerHTML = matches.slice(0, 20).map((entry) => `<option value="${escapeHTML(entry.protein)}" label="${escapeHTML(entry.label)}"></option>`).join("");
-  $("#profile-protein-search-status").textContent = !query.trim() ? `Type a UniProt ID, gene symbol or ${ORGANISM.identifierLabel}.`
+  $("#profile-protein-search-status").textContent = !query.trim() ? (ORGANISM.searchPlaceholder
+    ? "Type a UniProt ID, gene symbol or alias." : `Type a UniProt ID, gene symbol or ${ORGANISM.identifierLabel}.`)
     : !matches.length ? "No loaded proteins match this search."
     : `${matches.length} matching proteins. ${matches.length > 20 ? "Showing the first 20 suggestions; refine your search for more specific matches." : "Choose a suggestion or press Enter for a unique match."}`;
   return matches;
@@ -929,7 +954,7 @@ function profileChartSVG(profile) {
       const referenceNote = config.normalized ? (entry.plotValue < 0 ? " · better than AA mean" : "") : (meetsReference ? " · meets cutoff" : "");
       const normalizationNote = entry.normalization ? ` · raw score ${fmt(entry.value)} · AA mean ${fmt(entry.normalization.mean)} · population SD ${fmt(entry.normalization.sd)} · ${entry.normalization.count} reference proteins · actual Top 5% boundary Z = ${fmt(entry.top5Z, config.digits)}` : "";
       return `<line class="profile-stem ${pointClass}" x1="${x(index)}" x2="${x(index)}" y1="${baseline}" y2="${y(entry.plotValue)}"/>
-        <circle class="profile-dot ${pointClass}" cx="${x(index)}" cy="${y(entry.plotValue)}" r="${isTarget ? 5 : 3.5}"><title>${entry.code}: ${fmt(entry.plotValue, config.digits)} · ${escapeHTML(config.label)}${normalizationNote} · ${tier.label} (percentile ${fmt(entry.proteome_percentile, 1)}%)${referenceNote}${isTarget ? " · target AA" : ""}</title></circle>
+        <circle class="profile-dot ${pointClass}" cx="${x(index)}" cy="${y(entry.plotValue)}" r="${isTarget ? 5 : 3.5}"><title>${entry.code}: ${fmt(entry.plotValue, config.digits)} · ${escapeHTML(config.label)} · ${escapeHTML(pocketLabel(entry))}${normalizationNote} · ${tier.label} (percentile ${fmt(entry.proteome_percentile, 1)}%)${referenceNote}${isTarget ? " · target AA" : ""}</title></circle>
         <text class="profile-label" text-anchor="middle" x="${x(index)}" y="${height - 13}">${entry.code}</text>`;
     }).join("")}
     ${Number.isFinite(reference.value) ? `<line class="threshold-line" x1="${margin.left}" x2="${width - margin.right}" y1="${y(reference.value)}" y2="${y(reference.value)}"><title>${escapeHTML(reference.label)}</title></line>
@@ -947,7 +972,7 @@ function renderProfileTable(profile) {
     <td class="numeric">${fmt(entry.sfct_score)}</td>
     <td class="numeric">${fmt(entry.vina_sfct_combined)}</td>
     <td class="numeric">${fmt(entry.vina_sfct_combined_50)}</td>
-    <td><span class="pocket-tag">${escapeHTML(entry.pocket)}</span></td>
+    <td><span class="pocket-tag">${escapeHTML(pocketLabel(entry))}</span></td>
   </tr>`).join("") + AMINO_ACIDS.filter(({ code }) => !profile.some((entry) => entry.code === code)).map(({ code, name }) => `<tr class="${code === state.aa ? "target-row" : ""}">
     <td>—</td><td><span class="aa-code"><i></i>${code} <small>${escapeHTML(name)}</small></span></td>
     <td colspan="5">Missing - no successful QC-passing score at the required pocket/model</td>
@@ -1202,10 +1227,11 @@ function renderPocketDetail(row) {
     $("#pocket-residues").textContent = "—";
     return;
   }
-  state.selectedPocket = row.pocket;
-  $("#pocket-detail-title").textContent = row.pocket;
+  state.selectedPocket = pocketKey(row);
+  $("#pocket-detail-title").textContent = pocketLabel(row);
   $("#pocket-detail-rank").textContent = `P2Rank #${row.rank}`;
   $("#pocket-detail-list").innerHTML = [
+    ["Model", row.protein],
     ["Probability", fmt(row.probability)],
     ["P2Rank score", fmt(row.score, 2)],
     ["Mean pLDDT", fmt(row.mean_pocket_plddt, 1)],
@@ -1216,17 +1242,17 @@ function renderPocketDetail(row) {
     ["Status", resultStatus(row)],
   ].map(([label, value]) => `<div><dt>${escapeHTML(label)}</dt><dd>${escapeHTML(value)}</dd></div>`).join("");
   $("#pocket-residues").textContent = row.residue_ids || "No residue list";
-  $$("#pockets-body tr").forEach((tr) => tr.classList.toggle("target-row", tr.dataset.pocket === row.pocket));
+  $$("#pockets-body tr").forEach((tr) => tr.classList.toggle("target-row", tr.dataset.pocket === pocketKey(row)));
   updateMolstarPocket(row);
 }
 
 function renderPockets(protein, target) {
   const pockets = getPockets(protein);
-  const bestPocket = getRanking(state.aa, state.metric).find((row) => row.uniprot_id === protein)?.pocket;
+  const bestPocket = getRankedProtein(protein, state.aa, state.metric);
   $("#pockets-heading").textContent = `${state.aa} retained pockets`;
   $("#pocket-count").textContent = `${pockets.length} ${pockets.length === 1 ? "pocket" : "pockets"}`;
-  $("#pockets-body").innerHTML = pockets.map((row) => `<tr data-pocket="${escapeHTML(row.pocket)}">
-    <td><span class="pocket-name-cell"><span class="pocket-tag">${escapeHTML(row.pocket)}</span>${row.pocket === bestPocket ? '<span class="pocket-best-badge">Best</span>' : ""}</span></td>
+  $("#pockets-body").innerHTML = pockets.map((row) => `<tr data-pocket="${escapeHTML(pocketKey(row))}">
+    <td><span class="pocket-name-cell"><span class="pocket-tag">${escapeHTML(pocketLabel(row))}</span>${bestPocket && pocketKey(row) === pocketKey(bestPocket) ? '<span class="pocket-best-badge">Best</span>' : ""}</span></td>
     <td class="numeric">#${row.rank}</td>
     <td class="numeric">${fmt(row.probability)}</td>
     <td class="numeric">${fmt(row.mean_pocket_plddt, 1)}</td>
@@ -1235,7 +1261,7 @@ function renderPockets(protein, target) {
     <td class="numeric score-value">${fmt(row.vina_sfct_combined)}</td>
     <td class="numeric score-value">${fmt(row.vina_sfct_combined_50)}</td>
     <td>${fmt(row.center_x, 1)}, ${fmt(row.center_y, 1)}, ${fmt(row.center_z, 1)}</td>
-    <td><button type="button" class="pocket-select-button" data-pocket="${escapeHTML(row.pocket)}">Inspect</button></td>
+    <td><button type="button" class="pocket-select-button" data-pocket="${escapeHTML(pocketKey(row))}">Inspect</button></td>
   </tr>`).join("");
   if (!pockets.length) $("#pockets-body").innerHTML = '<tr><td colspan="10">Missing — no successful QC-passing pocket results for this AA and score.</td></tr>';
   const selected = state.profilePocket
@@ -1277,10 +1303,10 @@ function renderProtein() {
   $("#profile-delta").textContent = fmt(comparison.delta);
   $("#profile-delta-note").textContent = `${comparison.otherCount} successful other AAs`;
   $("#profile-z").textContent = fmt(comparison.z, 2);
-  $("#profile-pocket").textContent = target?.pocket || "—";
+  $("#profile-pocket").textContent = pocketLabel(target);
   $("#profile-pocket-label").textContent = profilePocket ? "Inspected pocket" : "Best pocket";
   $("#profile-confidence").textContent = target ? `P2Rank ${fmt(target.probability)}` : "P2Rank —";
-  $("#profile-comparison-heading").textContent = profilePocket ? `20-AA profile · ${profilePocket}` : "Full 20-AA profile";
+  $("#profile-comparison-heading").textContent = profilePocket ? `20-AA profile · ${pocketLabel(state.profilePocketAnchor)}` : "Full 20-AA profile";
   $("#profile-pocket-reset").hidden = !profilePocket;
   syncProfileValueControls();
   $("#profile-threshold-key").innerHTML = `<i></i>${escapeHTML(plotReference.label)}`;
@@ -1298,7 +1324,7 @@ function renderProtein() {
     $("#profile-stereo-note").textContent = !stereo ? "Successful comparable L and D scores required"
       : stereo.delta === 0 ? "Equal L/D scores" : `${stereo.lPreferred ? "L" : "D"}-${state.aa} predicted better`;
     $("#profile-stereo-card").title = stereo
-      ? `L-${state.aa}: ${fmt(stereo.lRow[state.metric])} (${stereo.lRow.pocket}); D-${state.aa}: ${fmt(stereo.dRow[state.metric])} (${stereo.dRow.pocket}). ${profilePocket ? "Same inspected pocket." : "Independent best successful pockets."}`
+      ? `L-${state.aa}: ${fmt(stereo.lRow[state.metric])} (${pocketLabel(stereo.lRow)}); D-${state.aa}: ${fmt(stereo.dRow[state.metric])} (${pocketLabel(stereo.dRow)}). ${profilePocket ? "Same inspected pocket." : "Independent best successful pockets."}`
       : "Missing scores are not evidence of L preference.";
   }
   $("#profile-chart").innerHTML = profileChartSVG(plotProfile);
@@ -1412,7 +1438,7 @@ function downloadBlob(filename, blob) {
 }
 
 function rowsToDelimited(rows, delimiter) {
-  const headers = ["uniprot_id", "gene_symbol", ORGANISM.rowIdentifier, "amino_acid", "pocket", "is_best_pocket", "score_metric", "score", "proteome_rank", "proteome_percentile", "aa_rank_within_protein", "near_competing_aas", "p2rank_probability", "mean_pocket_plddt", "delta_to_median_other_available_aas", "selectivity_z", "d_minus_l_delta", "vina_score", "sfct_score", "combined_score", "combined_50_score", "available_aa_count", "available_other_aa_count", "d_control_aa", "d_control_score", "d_control_pocket", "qphi_kT", "qphi_status", "qphi_vina_pose", "qphi_error"];
+  const headers = ["uniprot_id", "gene_symbol", ORGANISM.rowIdentifier, "amino_acid", "pocket", "is_best_pocket", "score_metric", "score", "proteome_rank", "proteome_percentile", "aa_rank_within_protein", "near_competing_aas", "p2rank_probability", "mean_pocket_plddt", "delta_to_median_other_available_aas", "selectivity_z", "d_minus_l_delta", "vina_score", "sfct_score", "combined_score", "combined_50_score", "available_aa_count", "available_other_aa_count", "d_control_aa", "d_control_score", "d_control_pocket", "qphi_kT", "qphi_status", "qphi_vina_pose", "qphi_error", "model", "l_control_model", "l_control_pocket", "d_control_model"];
   const quote = (value) => {
     if (typeof value === "number" && !Number.isFinite(value)) return "";
     const string = String(value ?? "");
@@ -1422,7 +1448,7 @@ function rowsToDelimited(rows, delimiter) {
   const data = rows.map((row) => {
     const comparison = row.comparison || getComparison(row.uniprot_id);
     const qphi = poseElectrostaticsForRow(row);
-    return [row.uniprot_id, geneSymbol(state.annotations.get(row.uniprot_id)), row[ORGANISM.rowIdentifier], state.aa, row.pocket, row.isBestPocket, state.metric, row[state.metric], row.proteome_rank, row.proteome_percentile, comparison.target?.aa_rank, comparison.nearCompetitors, row.probability, row.mean_pocket_plddt, comparison.delta, comparison.z, comparison.stereoControl?.delta ?? "", row.vina_affinity, row.sfct_score, row.vina_sfct_combined, row.vina_sfct_combined_50, comparison.profile.length, comparison.otherCount, dControlCode(state.aa) || "", comparison.stereoControl?.dRow[state.metric] ?? "", comparison.stereoControl?.dRow.pocket ?? "", qphi.value, qphi.status, qphi.pose, qphi.error].map(quote).join(delimiter);
+    return [row.uniprot_id, geneSymbol(state.annotations.get(row.uniprot_id)), row[ORGANISM.rowIdentifier], state.aa, row.pocket, row.isBestPocket, state.metric, row[state.metric], row.proteome_rank, row.proteome_percentile, comparison.target?.aa_rank, comparison.nearCompetitors, row.probability, row.mean_pocket_plddt, comparison.delta, comparison.z, comparison.stereoControl?.delta ?? "", row.vina_affinity, row.sfct_score, row.vina_sfct_combined, row.vina_sfct_combined_50, comparison.profile.length, comparison.otherCount, dControlCode(state.aa) || "", comparison.stereoControl?.dRow[state.metric] ?? "", comparison.stereoControl?.dRow.pocket ?? "", qphi.value, qphi.status, qphi.pose, qphi.error, row.protein, comparison.stereoControl?.lRow.protein, comparison.stereoControl?.lRow.pocket, comparison.stereoControl?.dRow.protein].map(quote).join(delimiter);
   });
   return [headers.join(delimiter), ...data].join("\n");
 }
@@ -1439,11 +1465,11 @@ async function downloadFiltered(delimiter) {
 }
 
 function profileTableToDelimited(profile, delimiter) {
-  const headers = ["Rank", "AA", "Vina", "SFCT", "Combined 80%", "Combined 50%", "Pocket"];
-  const rows = profile.map((entry) => [entry.aa_rank, `${entry.code} ${entry.name}`, entry.vina_affinity, entry.sfct_score, entry.vina_sfct_combined, entry.vina_sfct_combined_50, entry.pocket]);
+  const headers = ["Rank", "AA", "Vina", "SFCT", "Combined 80%", "Combined 50%", "Pocket", "Model"];
+  const rows = profile.map((entry) => [entry.aa_rank, `${entry.code} ${entry.name}`, entry.vina_affinity, entry.sfct_score, entry.vina_sfct_combined, entry.vina_sfct_combined_50, entry.pocket, entry.protein]);
   // Match the table: ranked successful results first, then missing canonical AAs.
   for (const { code, name } of AMINO_ACIDS) {
-    if (!profile.some((entry) => entry.code === code)) rows.push([null, `${code} ${name}`, null, null, null, null, null]);
+    if (!profile.some((entry) => entry.code === code)) rows.push([null, `${code} ${name}`, null, null, null, null, null, null]);
   }
   const quote = (value) => {
     if (typeof value === "number") return Number.isFinite(value) ? String(value) : "";
@@ -1458,7 +1484,7 @@ function downloadProfileTable(delimiter) {
   if (!state.selectedProtein) return;
   const profile = getProteinProfile(state.selectedProtein, state.metric, state.profilePocket);
   const extension = delimiter === "\t" ? "tsv" : "csv";
-  const basis = state.profilePocket || "best_pockets";
+  const basis = profilePocketFilename();
   const filename = `${state.selectedProtein}_${basis}_${METRICS[state.metric].short.toLowerCase()}_20aa_table.${extension}`;
   downloadText(filename, profileTableToDelimited(profile, delimiter), delimiter === "\t" ? "text/tab-separated-values" : "text/csv");
 }
@@ -1466,9 +1492,9 @@ function downloadProfileTable(delimiter) {
 function downloadProfile() {
   if (!state.selectedProtein) return;
   const profile = getProteinProfile(state.selectedProtein, state.metric, state.profilePocket);
-  const headers = ["uniprot_id", ORGANISM.rowIdentifier, "amino_acid", "aa_name", "aa_rank_within_protein", "pocket", "vina_score", "sfct_score", "combined_score", "combined_50_score"];
-  const rows = profile.map((row) => [state.selectedProtein, row[ORGANISM.rowIdentifier], row.code, row.name, row.aa_rank, row.pocket, row.vina_affinity, row.sfct_score, row.vina_sfct_combined, row.vina_sfct_combined_50].map((value) => typeof value === "number" && !Number.isFinite(value) ? "" : value).join("\t"));
-  const basis = state.profilePocket ? `_${state.profilePocket}` : "_best_pockets";
+  const headers = ["uniprot_id", ORGANISM.rowIdentifier, "amino_acid", "aa_name", "aa_rank_within_protein", "pocket", "vina_score", "sfct_score", "combined_score", "combined_50_score", "model"];
+  const rows = profile.map((row) => [state.selectedProtein, row[ORGANISM.rowIdentifier], row.code, row.name, row.aa_rank, row.pocket, row.vina_affinity, row.sfct_score, row.vina_sfct_combined, row.vina_sfct_combined_50, row.protein].map((value) => typeof value === "number" && !Number.isFinite(value) ? "" : value).join("\t"));
+  const basis = `_${profilePocketFilename()}`;
   downloadText(`${state.selectedProtein}${basis}_20aa_profile.tsv`, [headers.join("\t"), ...rows].join("\n"));
 }
 
@@ -1529,8 +1555,8 @@ function buildProfilePlotExportSVG() {
   subtitle.setAttribute("y", "45");
   subtitle.setAttribute("class", "export-subtitle");
   const orderLabel = state.profileOrder === "score_asc" ? "best → worst" : "canonical AA order";
-  const pocketLabel = state.profilePocket ? `${state.profilePocket} across all AAs` : "each AA’s best pocket";
-  subtitle.textContent = `${getProfileValueConfig().label} · ${orderLabel} · ${pocketLabel}`;
+  const pocketDescription = state.profilePocket ? `${pocketLabel(state.profilePocketAnchor)} across all AAs` : "each AA’s best pocket";
+  subtitle.textContent = `${getProfileValueConfig().label} · ${orderLabel} · ${pocketDescription}`;
   exportSVG.append(subtitle);
 
   const chart = source.cloneNode(true);
@@ -1587,7 +1613,7 @@ function buildProfilePlotExportSVG() {
 async function downloadProfilePlot(format) {
   const svgText = buildProfilePlotExportSVG();
   if (!svgText || !state.selectedProtein) return;
-  const pocketFilename = state.profilePocket || "best_pockets";
+  const pocketFilename = profilePocketFilename();
   const config = getProfileValueConfig();
   const valueFilename = config.normalized ? `aa_zscore_${METRICS[config.metric].short}` : state.profileValue;
   const baseFilename = `${state.selectedProtein}_${state.aa}_${valueFilename}_${pocketFilename}_20aa_profile`.replace(/[^a-zA-Z0-9_.-]+/g, "_");
@@ -1781,10 +1807,10 @@ function bindEvents() {
   $("#pockets-body").addEventListener("click", (event) => {
     const button = event.target.closest("button[data-pocket]");
     if (!button) return;
-    const row = getPockets(state.selectedProtein).find((pocket) => pocket.pocket === button.dataset.pocket);
+    const row = getPockets(state.selectedProtein).find((pocket) => pocketKey(pocket) === button.dataset.pocket);
     if (!row) return;
-    state.selectedPocket = row.pocket;
-    state.profilePocket = row.pocket;
+    state.selectedPocket = pocketKey(row);
+    state.profilePocket = state.selectedPocket;
     state.profilePocketAnchor = row;
     renderProtein();
   });
@@ -1882,7 +1908,7 @@ function mergeResultRows(aa, sfctRows, vinaRows) {
       if (![row.uniprot_id, row.protein, row.pocket].every((value) => String(value || "").trim())) {
         throw new Error(`Invalid ${source} result for ${aa.code}: missing UniProt, protein model or pocket ID`);
       }
-      const key = `${row.uniprot_id}|${row.pocket}`;
+      const key = pocketKey(row);
       if (seen.has(key)) throw new Error(`Duplicate ${source} pocket for ${aa.code}: ${key}`);
       seen.add(key);
       let merged = pockets.get(key);

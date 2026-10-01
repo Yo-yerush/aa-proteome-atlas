@@ -93,13 +93,20 @@ function pocketPotentialRows(text, columns) {
   });
 }
 
+function usableElectrostaticsStatus(status) {
+  return status === "success" || status === "fragment_only";
+}
+
 function parsePocketPotentialSummary(text) {
   const summary = new Map();
   for (const fields of pocketPotentialRows(text, POCKET_POTENTIAL_SUMMARY_COLUMNS)) {
     const [model, rank, count, hash] = fields;
     const key = `${model}|${rank}`;
-    if (!/^[1-9]\d*$/.test(rank) || !/^\d+$/.test(count) || !Number.isSafeInteger(Number(count))
-      || !isPotentialHash(hash) || summary.has(key)) throw new Error("Invalid or duplicate electrostatics pocket metadata");
+    // An upstream point-generation failure can have no coordinates to hash.
+    // Retain its unavailable status without disabling valid pockets in this table.
+    const failedWithoutPoints = fields[9] && !usableElectrostaticsStatus(fields[9]) && count === "0" && hash === "";
+    if (!model || !fields[9] || !/^[1-9]\d*$/.test(rank) || !/^\d+$/.test(count) || !Number.isSafeInteger(Number(count))
+      || (!isPotentialHash(hash) && !failedWithoutPoints) || summary.has(key)) throw new Error("Invalid or duplicate electrostatics pocket metadata");
     summary.set(key, { count: Number(count), hash, status: fields[9], error: fields[10] });
   }
   return summary;
@@ -186,7 +193,7 @@ async function loadValidatedPocketPotentials(request, points, stillCurrent = () 
   if (metadata.pocketHash !== request.row._compactPocketHash) throw new Error("Pocket export checksum does not match electrostatics");
   const pocket = metadata.summary.get(`${model}|${rank}`);
   if (!pocket) throw new Error("No electrostatics result for this model and pocket");
-  if (pocket.status !== "success") throw new Error(`Calculation unavailable (${pocket.status || "missing status"})${pocket.error ? `: ${pocket.error}` : ""}`);
+  if (!usableElectrostaticsStatus(pocket.status)) throw new Error(`Calculation unavailable (${pocket.status || "missing status"})${pocket.error ? `: ${pocket.error}` : ""}`);
   if (!points.length || pocket.count !== points.length) throw new Error("P2Rank point count does not match electrostatics");
   const fingerprint = await pocketPotentialSHA256(new TextEncoder().encode(pocketCoordinateFingerprintText(points)));
   if (!stillCurrent()) return null;
@@ -198,7 +205,7 @@ async function loadValidatedPocketPotentials(request, points, stillCurrent = () 
   if (!values || values.length !== points.length) throw new Error("Potential sample count does not match the selected pocket");
   const missing = values.filter((value) => value === null).length;
   if (missing === values.length) throw new Error("All potential samples are missing for this pocket");
-  return { values, missing, scale: metadata.scale, fragment: entry.fragment_only === true };
+  return { values, missing, scale: metadata.scale, fragment: pocket.status === "fragment_only" || entry.fragment_only === true };
 }
 
 function pocketPotentialColor(value, scale) {
@@ -311,7 +318,7 @@ async function refreshPocketPointColor() {
     pocketPotentialStatus = { kind: result.missing ? "partial" : "ready", missing: result.missing,
       message: `Validated receptor potential · ${result.values.length - result.missing}/${result.values.length} points`
         + (result.missing ? ` · ${result.missing} unavailable (gray)` : "")
-        + " · Colors saturate at ±5 kT/e" + (result.fragment ? " · Fragment-only model" : "") };
+        + " · Colors saturate at ±5 kT/e" + (result.fragment ? " · Fragment-only model: field excludes unmodeled sequence" : "") };
   } catch (error) {
     if (!current()) return;
     console.warn("Pocket electrostatic potential unavailable", error);

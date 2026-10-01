@@ -8,11 +8,11 @@ Explore predicted amino-acid binding across the proteome.
 
 AA Proteome Interaction Atlas is an interactive web app for finding, comparing and investigating candidate proteins that may bind free amino acids. It brings together proteome-wide docking scores, predicted binding pockets, 3D ligand poses, functional annotations and experimental positive controls in one place.
 
-The current release contains **Arabidopsis thaliana** and **Escherichia coli** results, each with **20 canonical amino acids** and **19 D-amino-acid datasets** for stereochemical comparisons. Glycine has no distinct L/D pair.
+The current release contains **Arabidopsis thaliana**, **Escherichia coli** and **Homo sapiens** results, each with **20 canonical L-amino-acid datasets**. Arabidopsis and E. coli also have **19 D-amino-acid datasets** for stereochemical comparisons; the supplied human release is L-only. Glycine has no distinct L/D pair.
 
 Choose an organism in the header. E. coli is the default for links without an organism parameter; `?organism=arabidopsis` opens Arabidopsis directly. Switching reloads the atlas with only that organism's data, preserves shared filters and the current tab, and clears protein searches, selected proteins/pockets and all analysis/viewer caches. Rankings, percentiles, normalization, GO backgrounds and experimental-control QC are computed separately within each organism. Optional files load on demand; missing datasets are shown as **Unavailable** without substituting another organism's data.
 
-E. coli uses the supplied gene symbols and `b`/`JW` locus identifiers, with product descriptions keyed by `b` locus ID. UniProt links remain available for both organisms. Download filenames begin with `arabidopsis_` or `ecoli_`; protein exports use `tair_id` for Arabidopsis and `gene_id` for E. coli.
+E. coli uses the supplied gene symbols and `b`/`JW` locus identifiers, with product descriptions keyed by `b` locus ID. Human (`?organism=human`) uses gene symbols and descriptions matched first by exact UniProt accession, then by an unambiguous symbol-to-Ensembl-gene mapping. Its dialogs show the supplied Ensembl IDs, protein names, functions and GO/pathway descriptions. UniProt links remain available for all organisms. Download filenames begin with `arabidopsis_`, `ecoli_` or `human_`; protein exports use `tair_id` for Arabidopsis and `gene_id` for E. coli and Human.
 
 Use the atlas to move from a ranked protein list to a specific pocket, compare amino-acid preferences, explore enriched biological functions, and assess how the scoring performs against known controls.
 
@@ -89,6 +89,8 @@ Here, `origin_score` is the saved pose’s Vina score (`sfct_vina_score`), **not
 
 The **Top-hit overlap** table uses a different competitive-AA count: `x/20` is membership in the top-tier lists for all 20 canonical AAs under that tab’s settings.
 
+Multiple model fragments remain separate pockets, while rankings and GO populations count each UniProt protein once. Pocket labels and downloads retain model identity; see [fragment handling](docs/technical-guide.md#multiple-models-or-fragments-for-one-protein).
+
 Only successful, finite scores contribute to rankings and statistics. Missing or failed results for one protein × AA do not remove successful results for another AA. Missing values are never replaced with zero. D-AA datasets do not enter the canonical 20-AA ranks, selectivity statistics or correlation matrix.
 
 ### AA-normalized profiles
@@ -139,7 +141,7 @@ python -m http.server 8765 --bind 127.0.0.1
 
 Open **http://127.0.0.1:8765/** in an up-to-date browser. The 3D viewer requires an internet connection for Mol* and AlphaFold structures.
 
-For GitHub Pages, publish `index.html`, `js/`, `css/`, `assets/`, `At_results/`, `Ec_results/`, `annotations/arabidopsis/` and `annotations/ecoli/` together, preserving filename capitalization. See the [deployment instructions](docs/technical-guide.md#github-pages) for the required files and configuration. Confirm data-redistribution permissions and attribution before publishing.
+For GitHub Pages, publish `index.html`, `js/`, `css/`, `assets/`, `At_results/`, `Ec_results/`, `Hs_results/`, `annotations/arabidopsis/`, `annotations/ecoli/` and `annotations/human/` together, preserving filename capitalization. See the [deployment instructions](docs/technical-guide.md#github-pages) for the required files and configuration. Confirm data-redistribution permissions and attribution before publishing.
 
 ## Troubleshooting and development
 

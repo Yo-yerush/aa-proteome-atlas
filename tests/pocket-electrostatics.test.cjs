@@ -113,6 +113,11 @@ const waitFor = async check => {
   assert.ok(!fetches.some(file => file.includes('/points_')));
   resetFiles({ status: 'receptor_error' }); await failLoad(/receptor_error.*Receptor preparation/);
   assert.ok(!fetches.some(file => file.includes('/points_')), 'Failed calculations do not load/paint samples');
+  resetFiles({ status: 'fragment_only' });
+  assert.equal((await load()).fragment, true, 'Usable fragment fields retain the partial-model label');
+  assert.deepEqual(Array.from((await load()).values), [-10, 0, 8]);
+  resetFiles({ status: 'unreliable_fragment_boundary' }); await failLoad(/unreliable_fragment_boundary/);
+  assert.ok(!fetches.some(file => file.includes('/points_')), 'Boundary failures never become usable fragment fields');
   resetFiles({ missing: true });
   assert.deepEqual(Array.from((await load()).values), [-10, null, 8]);
   assert.equal((await load()).missing, 1, 'Blank is missing, not neutral zero');

@@ -464,15 +464,15 @@ python scripts/export_pocket_points.py \
     
 gzip results/compact/pocket_points.tsv
 
-# Export Vina pose diagnostics for L-AAs.
-# conda create -n pose_diag -c conda-forge python=3.11 rdkit "meeko>=0.6" "prolif>=2" numpy scipy -y
-conda deactivate
-conda activate pose_diag
-python scripts/export_pose_diagnostics.py \
-    --bundle results/compact/L \
-    --uniprot-tsv metadata/yeast_uniprot.tsv \
-    --points-dir visualizations_p2rank \
-    --jobs 8 2>&1 | tee logs/pose_diagnostics.log
+# not working # # Export Vina pose diagnostics for L-AAs.
+# not working # # conda create -n pose_diag -c conda-forge python=3.11 rdkit "meeko>=0.6" "prolif>=2" numpy scipy -y
+# not working # conda deactivate
+# not working # conda activate pose_diag
+# not working # python scripts/export_pose_diagnostics.py \
+# not working #     --bundle results/compact/L \
+# not working #     --uniprot-tsv metadata/yeast_uniprot.tsv \
+# not working #     --points-dir visualizations_p2rank \
+# not working #     --jobs 8 2>&1 | tee logs/pose_diagnostics.log
 
 # Export pocket and L-AA pose electrostatics.
 # conda create -n electrostatics -c conda-forge python=3.11 numpy scipy rdkit "meeko>=0.6" pdb2pqr propka apbs ambertools -y

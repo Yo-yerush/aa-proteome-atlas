@@ -13,6 +13,7 @@ import gzip
 import json
 import math
 import os
+import re
 from pathlib import Path
 import sys
 import tempfile
@@ -99,26 +100,52 @@ def find_point_files(points_dir, proteins):
 def read_points(path, ranks):
     points = {rank: [] for rank in ranks}
     opener = gzip.open if path.suffix == ".gz" else open
+
     with opener(path, "rt", encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, 1):
             if not line.startswith(("ATOM", "HETATM")):
                 continue
-            # P2Rank stores the pocket rank in PDB residue-number columns 23-26.
+
+            # P2Rank may write atom serials >99999, overflowing the
+            # standard 5-character PDB serial field and shifting all
+            # subsequent fixed-width columns to the right.
+            match = re.match(r"^(?:ATOM  |HETATM)\s*(\d+)", line)
+            if not match:
+                raise ValueError(
+                    f"{path}, line {line_number}: invalid atom serial"
+                )
+
+            serial = match.group(1)
+            shift = max(0, len(serial) - 5)
+
             try:
-                rank = int(line[22:26])
+                rank = int(line[22 + shift:26 + shift])
             except ValueError as exc:
-                raise ValueError(f"{path}, line {line_number}: invalid point pocket rank") from exc
-            if rank not in points:  # Excludes rank 0 and all unretained pockets.
+                raise ValueError(
+                    f"{path}, line {line_number}: invalid point pocket rank"
+                ) from exc
+
+            if rank not in points:
                 continue
-            values = [line[30:38].strip(), line[38:46].strip(), line[46:54].strip()]
+
+            values = [
+                line[30 + shift:38 + shift].strip(),
+                line[38 + shift:46 + shift].strip(),
+                line[46 + shift:54 + shift].strip(),
+            ]
+
             try:
                 valid = all(math.isfinite(float(value)) for value in values)
             except ValueError:
                 valid = False
+
             if not valid:
-                raise ValueError(f"{path}, line {line_number}: invalid point coordinates")
-            # Preserve the coordinate precision; discard only PDB padding.
+                raise ValueError(
+                    f"{path}, line {line_number}: invalid point coordinates"
+                )
+
             points[rank].append(",".join(values))
+
     return {rank: ";".join(values) for rank, values in points.items()}
 
 

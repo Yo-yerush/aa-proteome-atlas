@@ -89,6 +89,23 @@ const waitFor = async predicate => {
 };
 
 (async () => {
+  const fragmentRow = ['1','1','13','','','','-2.1234','fragment_only','Field excludes unmodeled sequence'];
+  context.fragmentText = tableText([fragmentRow]);
+  assert.equal(run('parsePoseElectrostatics(fragmentText,1).get("1").value'), -2.1234);
+  assert.equal(run('parsePoseElectrostatics(fragmentText,1).get("1").status'), 'fragment_only');
+  run(`const originalPoseLookup=poseElectrostaticsForRow;
+    poseElectrostaticsForRow=()=>parsePoseElectrostatics(fragmentText,1).get('1');`);
+  assert.match(run('poseElectrostaticsCell(scoreRow(1,"P1",1,-9))'), /Fragment only/);
+  assert.match(run('poseElectrostaticsCell(scoreRow(1,"P1",1,-9))'), /field excludes unmodeled sequence/);
+  run('poseElectrostaticsForRow=originalPoseLookup;');
+  for (const status of ['unreliable_fragment_boundary', 'receptor_error']) {
+    context.fragmentText = tableText([[...fragmentRow.slice(0,7),status,'Failure']]);
+    assert.ok(run('Number.isNaN(parsePoseElectrostatics(fragmentText,1).get("1").value)'));
+  }
+  context.fragmentText = tableText([[...fragmentRow.slice(0,6),'NaN','fragment_only','']]);
+  assert.throws(() => run('parsePoseElectrostatics(fragmentText,1)'), /Invalid qphi/);
+  context.fragmentText = tableText([['1','','','','','','2','fragment_only','']]);
+  assert.throws(() => run('parsePoseElectrostatics(fragmentText,1)'), /lacks Vina pose/);
   reset();
   assert.equal(fetches.length, 0);
   const before = run('JSON.stringify(state.rawByAA.get("ALA"))');
@@ -146,7 +163,7 @@ const waitFor = async predicate => {
     const download = downloads.at(-1);
     const lines = download.text.split('\n');
     assert.equal(lines.length, 8);
-    assert.ok(lines[0].endsWith(['qphi_kT','qphi_status','qphi_vina_pose','qphi_error'].join(delimiter)));
+    assert.ok(lines[0].includes(['qphi_kT','qphi_status','qphi_vina_pose','qphi_error'].join(delimiter)));
     assert.ok(download.text.includes('-2.1234'));
     assert.ok(download.text.includes([0,'success',1,''].join(delimiter)));
     assert.ok(!download.text.includes('-999'));

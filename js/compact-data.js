@@ -100,7 +100,7 @@ async function loadCompactResultRows(aa, data) {
   for (const scores of await readCompactTable(entry, COMPACT_SCORE_FIELDS, bundle.directory)) {
     const pocket = bundle.pockets.get(scores.pocket_id);
     if (!pocket) throw new Error(`Unknown compact pocket ID for ${aa.code}: ${scores.pocket_id}`);
-    const key = `${pocket.uniprot_id}|${pocket.pocket}`;
+    const key = pocketKey(pocket);
     if (seen.has(key)) throw new Error(`Duplicate compact protein/pocket for ${aa.code}: ${key}`);
     seen.add(key);
     const row = { ...pocket, ...scores, _compactDirectory: bundle.directory,

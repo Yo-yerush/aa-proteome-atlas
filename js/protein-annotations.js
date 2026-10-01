@@ -1,7 +1,7 @@
 // On-demand local descriptions, shared by every protein-row table.
 const GENE_DESCRIPTION_PATH = ORGANISM.descriptions;
 const GENE_DESCRIPTION_FIELDS = ORGANISM.descriptionFields;
-const GENE_DETAIL_FIELDS = [
+const GENE_DETAIL_FIELDS = ORGANISM.descriptionDetailFields || [
   ["note", "Notes"], ["Protein.families", "Protein families"], ["EC_number", "EC number"],
   ["GO.biological.process", "GO biological process"], ["GO.cellular.component", "GO cellular component"],
   ["GO.molecular.function", "GO molecular function"], ["AraCyc.Name", "AraCyc pathway"],
@@ -23,13 +23,17 @@ function proteinTableIdentity(protein, row = null) {
   const annotation = state.annotations.get(protein);
   const ids = proteinGeneIds(protein, row);
   const symbol = geneSymbol(annotation);
-  const annotationLine = [locusLabel(annotation, "") || ids.join(" · "), symbol === "—" ? "" : symbol].filter(Boolean).join(" · ");
+  const annotationLine = [...new Set([locusLabel(annotation, "") || ids.join(" · "), symbol === "—" ? "" : symbol].filter(Boolean))].join(" · ");
   const uniprotURL = `https://www.uniprot.org/uniprotkb/${encodeURIComponent(protein)}/entry`;
   return `<div class="protein-cell"><div class="protein-id-line"><a class="protein-uniprot-link" href="${escapeHTML(uniprotURL)}" target="_blank" rel="noopener noreferrer" title="Open ${escapeHTML(protein)} on UniProt">${escapeHTML(protein)}</a><button class="gene-info-button" type="button" data-gene-info="${escapeHTML(protein)}" data-gene-ids="${escapeHTML(ids.join(";"))}" aria-haspopup="dialog" aria-controls="gene-description-dialog" aria-label="Gene descriptions for ${escapeHTML(protein)}" title="View gene descriptions">i</button></div>${annotationLine ? `<small>${escapeHTML(annotationLine)}</small>` : ""}</div>`;
 }
 
 function parseGeneDescriptionCSV(text) {
   const records = new Map();
+  const add = (key, row) => {
+    if (!records.has(key)) records.set(key, []);
+    records.get(key).push(row);
+  };
   let headers = null, values = [], field = "", quoted = false, rowNumber = 0;
   const finishRow = () => {
     values.push(field); field = "";
@@ -46,9 +50,17 @@ function parseGeneDescriptionCSV(text) {
         const value = values[index].trim();
         return [header, /^(?:NA|N\/A|null|nan)$/i.test(value) ? "" : value];
       }));
-      for (const id of organismGeneIds(row.gene_id)) {
-        if (!records.has(id)) records.set(id, []);
-        records.get(id).push(row);
+      const geneIds = organismGeneIds(row.gene_id);
+      for (const id of geneIds) {
+        add(id, row);
+      }
+      const lookup = ORGANISM.descriptionLookup;
+      if (lookup && geneIds.length) {
+        // Separate namespaces keep accessions and symbols from colliding with gene IDs.
+        for (const accession of new Set((row[lookup.proteinField] || "").split(/[\s;,|]+/).filter(Boolean))) {
+          add(`uniprot:${accession}`, row);
+        }
+        for (const symbol of organismGeneIds(row[lookup.symbolField])) add(`symbol:${symbol}`, row);
       }
     }
     values = [];
@@ -69,6 +81,24 @@ function parseGeneDescriptionCSV(text) {
   if (field.length || values.length) finishRow();
   if (!headers || !records.size) throw new Error(`No ${ORGANISM.name} gene descriptions were found in the annotation CSV.`);
   return records;
+}
+
+function matchingGeneDescriptions(protein, ids, records) {
+  if (!ORGANISM.descriptionLookup) return new Map(ids.map((id) => [id, records.get(id) || []]));
+  // Exact accessions are authoritative, including isoform suffixes. Symbols may
+  // bridge differing annotation exports only when they identify a single gene.
+  let matches = records.get(`uniprot:${protein}`);
+  if (!matches?.length) {
+    matches = [...new Set(ids.flatMap((id) => records.get(id) || records.get(`symbol:${id}`) || []))];
+    if (new Set(matches.map((row) => ORGANISM.normalizeGene(row.gene_id))).size !== 1) matches = [];
+  }
+  const selected = new Map();
+  for (const row of matches) {
+    const id = ORGANISM.normalizeGene(row.gene_id);
+    if (!selected.has(id)) selected.set(id, []);
+    selected.get(id).push(row);
+  }
+  return selected;
 }
 
 async function loadGeneDescriptions() {
@@ -114,15 +144,23 @@ async function openGeneDescriptions(protein, ids, opener) {
   const dialog = $("#gene-description-dialog"), body = $("#gene-description-body");
   const request = ++geneDescriptionRequest;
   geneDescriptionOpener = opener;
+  const canLookup = ids.length > 0 || Boolean(ORGANISM.descriptionLookup);
   $("#gene-description-title").textContent = `${protein} · ${ORGANISM.name} gene descriptions`;
   $("#gene-description-ids").textContent = ids.length ? `${ORGANISM.identifierLabel}: ${ids.join(" · ")}` : `No mapped ${ORGANISM.identifierLabel}`;
-  body.setAttribute("aria-busy", ids.length ? "true" : "false");
-  body.innerHTML = `<p class="gene-description-missing">${ids.length ? "Loading gene descriptions…" : `Unavailable — no ${ORGANISM.identifierLabel} is mapped to this protein in the result or UniProt annotation files.`}</p>`;
+  body.setAttribute("aria-busy", canLookup ? "true" : "false");
+  body.innerHTML = `<p class="gene-description-missing">${canLookup ? "Loading gene descriptions…" : `Unavailable — no ${ORGANISM.identifierLabel} is mapped to this protein in the result or UniProt annotation files.`}</p>`;
   if (!dialog.open) dialog.showModal();
-  if (!ids.length) return;
+  if (!canLookup) return;
   try {
     const records = await loadGeneDescriptions();
-    if (request === geneDescriptionRequest && dialog.open) body.innerHTML = geneDescriptionSections(ids, records);
+    if (request === geneDescriptionRequest && dialog.open) {
+      const selected = matchingGeneDescriptions(protein, ids, records);
+      body.innerHTML = selected.size ? geneDescriptionSections([...selected.keys()], selected)
+        : '<p class="gene-description-missing">Unavailable — no unambiguous matching description was found in the supplied annotations.</p>';
+      if (ORGANISM.descriptionLookup && selected.size) {
+        $("#gene-description-ids").textContent = `${ORGANISM.descriptionLookup.identifierLabel}: ${[...selected.keys()].join(" · ")}`;
+      }
+    }
   } catch (error) {
     if (request === geneDescriptionRequest && dialog.open) body.innerHTML = `<p class="gene-description-error">Unavailable — ${escapeHTML(error.message)} Close and reopen this window to retry. Protein results are still available.</p>`;
   } finally {

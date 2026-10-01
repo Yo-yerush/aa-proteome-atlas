@@ -43,18 +43,19 @@ function parsePoseElectrostatics(text, expectedRows) {
     if (!/^[1-9]\d*$/.test(id) || table.has(id) || !status || (pose !== "" && pose !== "1")) {
       throw new Error("Invalid/duplicate pocket ID or unexpected Vina pose in electrostatics");
     }
-    if (status === "success" && (pose !== "1" || !/^[1-9]\d*$/.test(atoms))) {
+    const usable = usableElectrostaticsStatus(status);
+    if (usable && (pose !== "1" || !/^[1-9]\d*$/.test(atoms))) {
       throw new Error("Successful pose electrostatics lacks Vina pose 1 or its atom count");
     }
     let value = NaN;
-    if (status === "success" && rawValue.trim() !== "") {
+    if (usable && rawValue.trim() !== "") {
       if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(rawValue) || !Number.isFinite(Number(rawValue))) {
         throw new Error("Invalid qphi_kT value in pose electrostatics");
       }
       value = Number(rawValue);
     }
     // Unsuccessful/clashing rows never acquire a value, even if an exporter supplied one.
-    const missingValue = status === "success" && !Number.isFinite(value);
+    const missingValue = usable && !Number.isFinite(value);
     table.set(id, { value, pose: pose === "1" ? 1 : null, status: missingValue ? "missing_value" : status,
       error: missingValue ? "Successful calculation has no qphi_kT value" : error });
   }
@@ -109,9 +110,10 @@ function poseElectrostaticsCell(row) {
   const available = Number.isFinite(result.value);
   const poseId = savedSfctPoseId(row);
   const sfctPose = poseId === null ? "" : ` This row's saved SFCT/Combined pose: Vina MODEL ${poseId} (SFCT index ${row.sfct_best_pose}).`;
-  const title = available ? POSE_QPHI_DESCRIPTION + sfctPose
+  const fragment = result.status === "fragment_only";
+  const title = available ? POSE_QPHI_DESCRIPTION + sfctPose + (fragment ? " Fragment-only model: field excludes unmodeled sequence." : "")
     : `qφ (kT) unavailable (${result.status})${result.error ? `: ${result.error}` : ""}`;
-  return `<td class="numeric qphi-cell" title="${escapeHTML(title)}">${available ? fmt(result.value, 3) : result.status === "loading" ? "…" : "—"}</td>`;
+  return `<td class="numeric qphi-cell" title="${escapeHTML(title)}">${available ? fmt(result.value, 3) : result.status === "loading" ? "…" : "—"}${available && fragment ? '<small class="analysis-gene">Fragment only</small>' : ""}</td>`;
 }
 
 function updateExplorerPoseStatus(entry) {
