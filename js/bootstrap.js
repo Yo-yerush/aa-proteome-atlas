@@ -12,12 +12,10 @@ async function bootstrapAtlas() {
       const scientificName = document.createElement("p");
       scientificName.className = "home-scientific-name";
       scientificName.textContent = organism.scientificName;
-      const description = document.createElement("p");
-      description.textContent = organism.homeDescription;
       const action = document.createElement("span");
       action.className = "home-open-label";
       action.textContent = "Open atlas →";
-      card.append(name, scientificName, description, action);
+      card.append(name, scientificName, action);
       cards.append(card);
     }
     home.hidden = false;

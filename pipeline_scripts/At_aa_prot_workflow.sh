@@ -1,7 +1,7 @@
 # Whole-proteome amino acids reverse docking workflow in Arabidopsis thaliana
 
-mkdir -p /home/yoyerush/yo/whole_at_proteins_docking/
-cd /home/yoyerush/yo/whole_at_proteins_docking/
+mkdir -p /PATH/TO/aa_proteins_docking/
+cd /PATH/TO/aa_proteins_docking/
 
 ################################################################
 
@@ -173,7 +173,7 @@ cd tools
 wget https://github.com/rdk/p2rank/releases/download/2.5.1/p2rank_2.5.1.tar.gz
 tar -xzf p2rank_2.5.1.tar.gz
 
-cd /home/yoyerush/yo/whole_at_proteins_docking/arabidopsis_docking
+cd ../
 
 ## Run P2Rank on ALL ~27,000 proteins
 # Create the dataset:
@@ -410,10 +410,10 @@ done
 ### 6. use OnionNet-SFCT for correction of docking scores
 conda deactivate
 
-# # a. Download OnionNet-SFCT
-# cd /home/yoyerush/yo/whole_at_proteins_docking/arabidopsis_docking/tools
-# git clone https://github.com/zhenglz/OnionNet-SFCT.git
-# cd OnionNet-SFCT
+# a. Download OnionNet-SFCT
+cd ../
+git clone https://github.com/zhenglz/OnionNet-SFCT.git
+cd OnionNet-SFCT
 
 # # b. Create a separate SFCT environment
 # conda create -n sfct -c conda-forge python=3.8 openbabel=3.1.1 pip -y
@@ -433,7 +433,7 @@ conda activate sfct
 
 
 # d. Run SFCT for every completed amino-acid docking
-cd /home/yoyerush/yo/whole_at_proteins_docking/arabidopsis_docking
+cd ../
 
 for ligand in ligands/amino_acids_pdbqt/*.pdbqt
 do

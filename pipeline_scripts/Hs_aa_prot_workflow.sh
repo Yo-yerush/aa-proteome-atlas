@@ -1,7 +1,7 @@
 # Whole-proteome amino acids reverse docking workflow in Homo sapiens
 
-mkdir -p /home/yoyerush/yo/whole_at_proteins_docking/
-cd /home/yoyerush/yo/whole_at_proteins_docking/
+mkdir -p /PATH/TO/aa_proteins_docking/
+cd /PATH/TO/aa_proteins_docking/
 
 ################################################################
 
@@ -168,8 +168,6 @@ if [ ! -x tools/p2rank_2.5.1/prank ]; then
         https://github.com/rdk/p2rank/releases/download/2.5.1/p2rank_2.5.1.tar.gz
     tar -xzf tools/p2rank_2.5.1.tar.gz -C tools
 fi
-
-cd /home/yoyerush/yo/whole_at_proteins_docking/human_docking
 
 ## Run P2Rank on ALL proteins
 # Create the dataset:
@@ -404,7 +402,7 @@ done
 conda deactivate
 
 # # a. Download OnionNet-SFCT
-cd /home/yoyerush/yo/whole_at_proteins_docking/human_docking/tools
+cd tools
 git clone https://github.com/zhenglz/OnionNet-SFCT.git
 cd OnionNet-SFCT
 
@@ -423,7 +421,7 @@ pip install gdown
 gdown "https://drive.google.com/uc?id=1iiJvW4GBfg4D7LCuTRLKv9qnRYu5L2o5" -O data/sfct.model
 
 # d. Run SFCT for every completed amino-acid docking
-cd /home/yoyerush/yo/whole_at_proteins_docking/human_docking
+cd ../
 
 for ligand in ligands/amino_acids_pdbqt/*.pdbqt
 do

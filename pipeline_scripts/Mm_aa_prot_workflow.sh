@@ -1,4 +1,4 @@
-# Whole-proteome amino acids reverse docking workflow in Saccharomyces cerevisiae (yeast)
+# Whole-proteome amino acids reverse docking workflow in Homo sapiens
 
 mkdir -p /PATH/TO/aa_proteins_docking/
 cd /PATH/TO/aa_proteins_docking/
@@ -9,12 +9,12 @@ cd /PATH/TO/aa_proteins_docking/
 # download AlphaFold structures
 # https://ftp.ebi.ac.uk/pub/databases/alphafold/latest/
 
-mkdir -p yeast_docking/structures_raw
-cd yeast_docking/structures_raw
+mkdir -p mouse_docking/structures_raw
+cd mouse_docking/structures_raw
 
-wget https://ftp.ebi.ac.uk/pub/databases/alphafold/latest/UP000002311_559292_YEAST_v6.tar
+wget https://ftp.ebi.ac.uk/pub/databases/alphafold/latest/UP000000589_10090_MOUSE_v6.tar
 
-tar -xf UP000002311_559292_YEAST_v6.tar
+tar -xf UP000000589_10090_MOUSE_v6.tar
 gunzip *.gz
 
 # extract the UniProt accession from every AlphaFold filename
@@ -27,14 +27,14 @@ find structures_raw -type f \( -name "*.cif" -o -name "*.pdb" \) \
     | sort -u \
     > metadata/uniprot_ids.txt
 
-# Download the yeast UniProt annotation table:
-wget -O metadata/yeast_uniprot.tsv \
-"https://rest.uniprot.org/uniprotkb/stream?query=%28proteome%3AUP000002311%29&format=tsv&fields=accession,id,gene_primary,gene_names,gene_oln,length"
+# Download the Mouse UniProt annotation table:
+wget -O metadata/mouse_uniprot.tsv \
+"https://rest.uniprot.org/uniprotkb/stream?query=%28organism_id%3A10090%29&format=tsv&fields=accession,id,gene_primary,gene_names,length"
 
-# Download the yeast UniProt GO annotation table:
-wget -O metadata/yeast_uniprot_go.tsv \
-"https://rest.uniprot.org/uniprotkb/stream?query=%28proteome%3AUP000002311%29&format=tsv&fields=accession,go_p,go_f,go_c"
-gzip metadata/yeast_uniprot_go.tsv
+# Download the Mouse UniProt GO annotation table:
+wget -O metadata/mouse_uniprot_go.tsv \
+"https://rest.uniprot.org/uniprotkb/stream?query=%28organism_id%3A10090%29&format=tsv&fields=accession,go_p,go_f,go_c"
+gzip metadata/mouse_uniprot_go.tsv
 
 # create a structure manifest:
 python3 - <<'PY'
@@ -43,7 +43,7 @@ import re
 import csv
 
 raw = "structures_raw"
-annotation = "metadata/yeast_uniprot.tsv"
+annotation = "metadata/mouse_uniprot.tsv"
 output = "metadata/structure_manifest.tsv"
 
 mapping = {}
@@ -54,18 +54,14 @@ with open(annotation) as f:
     for row in reader:
         acc = row["Entry"]
 
-        locus_tag = ""
-        for key in row:
-            if key == "Gene Names (ordered locus)":
-                locus_tag = row[key].strip()
-                break
+        gene_id = row.get("Gene Names (primary)", "").strip()
 
         genes = row.get("Gene Names", "")
 
-        mapping[acc] = (locus_tag, genes)
+        mapping[acc] = (gene_id, genes)
 
 with open(output, "w") as out:
-    out.write("uniprot_id\tlocus_tag\tgene_names\tstructure_file\n")
+    out.write("uniprot_id\tgene_id\tgene_names\tstructure_file\n")
 
     for filename in sorted(os.listdir(raw)):
 
@@ -79,10 +75,10 @@ with open(output, "w") as out:
 
         accession = m.group(1)
 
-        locus_tag, genes = mapping.get(accession, ("", ""))
+        gene_id, genes = mapping.get(accession, ("", ""))
 
         out.write(
-            f"{accession}\t{locus_tag}\t{genes}\t{filename}\n"
+            f"{accession}\t{gene_id}\t{genes}\t{filename}\n"
         )
 PY
 
@@ -132,11 +128,11 @@ PY
 # Check the number of structures
 find structures_clean -name "*.pdb" | wc -l
 
-# prepare every receptor for Vina
+# prepare every receptor for Vina - using 64 cores in parallel
 mkdir -p receptors_pdbqt logs logs/receptor_preparation
 
 find structures_clean -name "*.pdb" | \
-parallel -j 32 '
+parallel -j 64 '
     base=$(basename {} .pdb)
     echo "Preparing $base"
     mk_prepare_receptor.py \
@@ -150,6 +146,11 @@ parallel -j 32 '
 find receptors_pdbqt -name "*.pdbqt" | wc -l
 # total:
 find logs/receptor_preparation -name "*.log" | wc -l
+
+#####
+# 23184 succeeded out from 23586 in total
+#####
+
 
 # remove the structures_raw extracted files (still keep the original tar file)
 rm -f structures_raw/AF-*.pdb
@@ -168,23 +169,22 @@ if [ ! -x tools/p2rank_2.5.1/prank ]; then
     tar -xzf tools/p2rank_2.5.1.tar.gz -C tools
 fi
 
-
 ## Run P2Rank on ALL proteins
 # Create the dataset:
 find structures_clean \
     -name "*.pdb" \
     -type f \
     | sort \
-    > yeast_structures.ds
+    > mouse_structures.ds
 
 mkdir -p pockets_p2rank logs
 
 tools/p2rank_2.5.1/prank predict \
     -c alphafold \
-    -threads 64 \
+    -threads 80 \
     -visualizations 1 \
     -o pockets_p2rank \
-    yeast_structures.ds \
+    mouse_structures.ds \
     > logs/p2rank.log 2>&1
 
 # check for 'center_x/y/z' coordinates
@@ -205,7 +205,7 @@ rm -r pockets_p2rank/visualizations
 mkdir -p results
 
 # build the master-pocket table
-python scripts/build_pocket_master.py --gene-id-column locus_tag
+python scripts/build_pocket_master.py --gene-id-column gene_id
 
 
 # Before filtering, inspect the distribution
@@ -401,8 +401,8 @@ done
 ### 6. use OnionNet-SFCT for correction of docking scores
 conda deactivate
 
-# a. Download OnionNet-SFCT
-cd tools
+# # a. Download OnionNet-SFCT
+cd mouse_docking/tools
 git clone https://github.com/zhenglz/OnionNet-SFCT.git
 cd OnionNet-SFCT
 
@@ -415,10 +415,10 @@ conda activate sfct
 # python -m pip install --no-build-isolation mdtraj==1.9.7
 # python -m pip install biopandas==0.2.9
 
-# # c. Download the trained SFCT model
-# mkdir -p data
-# pip install gdown
-# gdown "https://drive.google.com/uc?id=1iiJvW4GBfg4D7LCuTRLKv9qnRYu5L2o5" -O data/sfct.model
+# c. Download the trained SFCT model
+mkdir -p data
+pip install gdown
+gdown "https://drive.google.com/uc?id=1iiJvW4GBfg4D7LCuTRLKv9qnRYu5L2o5" -O data/sfct.model
 
 # d. Run SFCT for every completed amino-acid docking
 cd ../
@@ -460,8 +460,9 @@ python scripts/export_vina_ligand_positions.py --bundle results/compact/L
 python scripts/export_pocket_points.py \
     --bundle results/compact/L \
     --points-dir visualizations_p2rank
-    
-gzip results/compact/pocket_points.tsv
+
+
+# gzip results/compact/pocket_points.tsv
 
 # not working # # Export Vina pose diagnostics for L-AAs.
 # not working # # conda create -n pose_diag -c conda-forge python=3.11 rdkit "meeko>=0.6" "prolif>=2" numpy scipy -y
@@ -469,9 +470,9 @@ gzip results/compact/pocket_points.tsv
 # not working # conda activate pose_diag
 # not working # python scripts/export_pose_diagnostics.py \
 # not working #     --bundle results/compact/L \
-# not working #     --uniprot-tsv metadata/yeast_uniprot.tsv \
+# not working #     --uniprot-tsv metadata/mouse_uniprot.tsv \
 # not working #     --points-dir visualizations_p2rank \
-# not working #     --jobs 8 2>&1 | tee logs/pose_diagnostics.log
+# not working #     --jobs 24 2>&1 | tee logs/pose_diagnostics.log
 
 # Export pocket and L-AA pose electrostatics.
 # conda create -n electrostatics -c conda-forge python=3.11 numpy scipy rdkit "meeko>=0.6" pdb2pqr propka apbs ambertools -y
@@ -480,13 +481,15 @@ conda deactivate
 conda activate electrostatics
 python scripts/export_electrostatics.py \
     --bundle results/compact/L \
-    --uniprot-tsv metadata/yeast_uniprot.tsv \
+    --uniprot-tsv metadata/mouse_uniprot.tsv \
     --points-dir visualizations_p2rank \
     --pdb2pqr pdb2pqr30 \
-    --jobs 8 2>&1 | tee logs/electrostatics_potential.log
+    --jobs 24 2>&1 | tee logs/electrostatics_potential.log
+
+gzip results/compact/electrostatics/manifest.json
 
 # before download to the app, also gzip the uniprot file
-gzip metadata/yeast_uniprot.tsv
+gzip metadata/mouse_uniprot.tsv
 
 ################################################################
 

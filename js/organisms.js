@@ -2,7 +2,6 @@
 const ORGANISMS = Object.freeze({
   arabidopsis: Object.freeze({
     id: "arabidopsis", name: "Arabidopsis", scientificName: "Arabidopsis thaliana",
-    homeDescription: "20 canonical amino acids with L/D comparisons.",
     resultsDirectory: "At_results",
     annotations: "annotations/arabidopsis/arabidopsis_uniprot.tsv.gz",
     descriptions: "annotations/arabidopsis/At_custom_description_file.csv.gz",
@@ -16,7 +15,6 @@ const ORGANISMS = Object.freeze({
   }),
   ecoli: Object.freeze({
     id: "ecoli", name: "E. coli", scientificName: "Escherichia coli",
-    homeDescription: "20 canonical amino acids with L/D comparisons.",
     resultsDirectory: "Ec_results",
     annotations: "annotations/ecoli/ecoli_uniprot.tsv.gz",
     descriptions: "annotations/ecoli/Ec_custom_description_file.csv.gz",
@@ -30,7 +28,6 @@ const ORGANISMS = Object.freeze({
   }),
   human: Object.freeze({
     id: "human", name: "Human", scientificName: "Homo sapiens",
-    homeDescription: "20 canonical amino acids in an L-only dataset.",
     resultsDirectory: "Hs_results",
     annotations: "annotations/human/human_uniprot.tsv.gz",
     descriptions: "annotations/human/Hs_custom_description_file.csv.gz",
