@@ -33,6 +33,22 @@ button { color: inherit; }
 .shell { width: min(1600px, calc(100% - 56px)); margin-inline: auto; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
+#organism-home[hidden], #atlas-app[hidden] { display: none; }
+.organism-home { max-width: 1100px; padding-block: clamp(44px, 8vw, 100px); }
+.organism-home h1 { margin: 12px 0 20px; font: 500 clamp(36px, 5vw, 58px)/1.1 Georgia, serif; letter-spacing: -1px; }
+.home-lede { max-width: 680px; margin: 0 0 36px; color: var(--muted); font-size: 18px; }
+.organism-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.organism-card { display: flex; flex-direction: column; padding: 28px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); color: var(--ink); text-decoration: none; }
+.organism-card:hover { border-color: var(--purple); }
+.organism-card:focus-visible { outline: 3px solid var(--purple); outline-offset: 4px; }
+.organism-card h2 { margin: 0; color: var(--purple-dark); font: 500 27px/1.2 Georgia, serif; }
+.organism-card p { margin: 18px 0 0; color: var(--muted); }
+.organism-card .home-scientific-name { margin-top: 8px; font-style: italic; font-size: 13px; }
+.home-open-label { margin-top: auto; padding-top: 26px; color: var(--purple); font-weight: 700; }
+.home-note { margin: 30px 0 12px; color: var(--muted); font-size: 12px; }
+.home-project-link { color: var(--purple); font-size: 13px; }
+@media (max-width: 700px) { .organism-cards { grid-template-columns: 1fr; } }
+
 .loading-screen {
   position: fixed; inset: 0; z-index: 1000; display: grid; place-content: center; gap: 16px;
   text-align: center; background: var(--paper); color: var(--purple-dark); transition: opacity .35s ease, visibility .35s ease;
@@ -86,6 +102,7 @@ button { color: inherit; }
 .organism-control label { color: var(--muted); font-size: 10px; font-weight: 700; }
 .organism-control select { width: 100%; border: 0; background: transparent; color: var(--purple-dark); font-size: 13px; font-weight: 700; }
 .organism-control small { color: var(--muted); font-size: 10px; }
+.organism-home-link { width: fit-content; color: var(--purple); font-size: 10px; }
 .dataset-availability { padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--muted); }
 /* The selector stays available while a dataset loads or reports an error. */
 .topbar { z-index: 1001; }

@@ -5,13 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Explore amino-acid docking preferences across Arabidopsis and E. coli proteomes."
+      content="Explore amino-acid docking preferences across Arabidopsis, E. coli and human proteomes."
     />
     <title>AA Proteome Atlas</title>
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="css/styles.css?v=chain-compatibility-1" />
+    <link rel="stylesheet" href="css/styles.css?v=organism-home-1" />
   </head>
   <body>
+    <main class="organism-home shell" id="organism-home" aria-labelledby="home-title" hidden>
+      <p class="eyebrow">AA Proteome Interaction Atlas</p>
+      <h1 id="home-title">Choose your organism.</h1>
+      <p class="home-lede">Explore protein rankings, compare amino-acid preferences and inspect predicted binding pockets. Select an organism to open its atlas.</p>
+      <nav class="organism-cards" id="organism-cards" aria-label="Available organisms"></nav>
+      <p class="home-note">Scores indicate predicted compatibility, not experimentally confirmed binding.</p>
+      <a class="home-project-link" href="https://github.com/Yo-yerush/aa-proteome-atlas" target="_blank" rel="noopener noreferrer">About the project ↗</a>
+    </main>
+    <noscript><p class="shell">Enable JavaScript to choose an organism and explore the atlas.</p></noscript>
+
+    <div id="atlas-app" hidden>
     <div class="loading-screen" id="loading-screen" role="status" aria-live="polite">
       <div class="loader-mark" aria-hidden="true">
         <span></span><span></span><span></span>
@@ -996,18 +1007,9 @@
         <span>Scores indicate predicted compatibility—not experimental binding.</span>
       </div>
     </footer>
+    </div>
 
-    <script src="js/organisms.js?v=chain-compatibility-1"></script>
-    <script src="js/protein-annotations.js?v=organisms-3"></script>
-    <script src="js/analysis.js?v=organisms-3"></script>
-    <script src="js/control-qc.js?v=assembly-filter-1"></script>
-    <script src="js/go-analysis.js?v=organisms-3"></script>
-    <script src="js/compact-data.js?v=organisms-3"></script>
-    <script src="js/ligand-viewer.js?v=organisms-3"></script>
-    <script src="js/pocket-electrostatics.js?v=organisms-3"></script>
-    <script src="js/pose-electrostatics.js?v=organisms-3"></script>
-    <script src="js/pocket-cloud.js?v=organisms-3"></script>
-    <script src="js/protein-viewer.js?v=organisms-3"></script>
-    <script src="js/app.js?v=organisms-3"></script>
+    <script src="js/organisms.js?v=organism-home-1"></script>
+    <script src="js/bootstrap.js?v=organism-home-1"></script>
   </body>
 </html>

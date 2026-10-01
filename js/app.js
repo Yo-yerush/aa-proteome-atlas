@@ -549,7 +549,7 @@ function readURLState() {
 function updateURL() {
   if (organismLeaving) return;
   const params = new URLSearchParams();
-  if (ORGANISM.id !== DEFAULT_ORGANISM_ID) params.set("organism", ORGANISM.id);
+  params.set("organism", ORGANISM.id);
   if (state.aa !== "ALA") params.set("aa", state.aa);
   if (state.metric !== "vina_sfct_combined_50") params.set("metric", state.metric);
   if (state.top !== 100) params.set("top", state.top);

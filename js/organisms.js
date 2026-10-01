@@ -2,6 +2,7 @@
 const ORGANISMS = Object.freeze({
   arabidopsis: Object.freeze({
     id: "arabidopsis", name: "Arabidopsis", scientificName: "Arabidopsis thaliana",
+    homeDescription: "20 canonical amino acids with L/D comparisons.",
     resultsDirectory: "At_results",
     annotations: "annotations/arabidopsis/arabidopsis_uniprot.tsv.gz",
     descriptions: "annotations/arabidopsis/At_custom_description_file.csv.gz",
@@ -15,6 +16,7 @@ const ORGANISMS = Object.freeze({
   }),
   ecoli: Object.freeze({
     id: "ecoli", name: "E. coli", scientificName: "Escherichia coli",
+    homeDescription: "20 canonical amino acids with L/D comparisons.",
     resultsDirectory: "Ec_results",
     annotations: "annotations/ecoli/ecoli_uniprot.tsv.gz",
     descriptions: "annotations/ecoli/Ec_custom_description_file.csv.gz",
@@ -28,6 +30,7 @@ const ORGANISMS = Object.freeze({
   }),
   human: Object.freeze({
     id: "human", name: "Human", scientificName: "Homo sapiens",
+    homeDescription: "20 canonical amino acids in an L-only dataset.",
     resultsDirectory: "Hs_results",
     annotations: "annotations/human/human_uniprot.tsv.gz",
     descriptions: "annotations/human/Hs_custom_description_file.csv.gz",
@@ -46,15 +49,13 @@ const ORGANISMS = Object.freeze({
   }),
 });
 
-const DEFAULT_ORGANISM_ID = "ecoli";
-
 function resolveOrganism(search = globalThis.location?.search || "") {
   const id = search ? new URLSearchParams(search).get("organism") : null;
-  return Object.hasOwn(ORGANISMS, id) ? ORGANISMS[id] : ORGANISMS[DEFAULT_ORGANISM_ID];
+  return Object.hasOwn(ORGANISMS, id) ? ORGANISMS[id] : null;
 }
 
 const ORGANISM = resolveOrganism();
-const RESULTS_DIRECTORY = ORGANISM.resultsDirectory;
+const RESULTS_DIRECTORY = ORGANISM?.resultsDirectory ?? null;
 let organismAbortController = null;
 let organismLeaving = false;
 
@@ -71,17 +72,17 @@ function organismURL(id) {
   const url = new URL(location.href);
   url.searchParams.set("organism", id);
   // These identify entries in the old organism, unlike shared AA/quality filters.
-  for (const key of ["q", "protein", "pocket"]) url.searchParams.delete(key);
+  if (ORGANISM) for (const key of ["q", "protein", "pocket"]) url.searchParams.delete(key);
   return url.href;
 }
 
 function switchOrganism(id) {
-  if (id === ORGANISM.id && !organismLeaving) return;
+  if (id === ORGANISM?.id && !organismLeaving) return;
   const url = organismURL(id);
   organismLeaving = true;
   organismAbortController?.abort();
   // Keep the selector usable during loading, including a second rapid switch.
-  document.querySelector("main").inert = true;
+  document.querySelector("#atlas-app main").inert = true;
   document.querySelector(".primary-nav").inert = true;
   document.querySelector("#loading-screen").classList.remove("hidden");
   document.querySelector("#loading-screen").textContent = `Loading ${ORGANISMS[id].name} atlas…`;
@@ -89,6 +90,7 @@ function switchOrganism(id) {
 }
 
 function initializeOrganismUI() {
+  if (organismAbortController) return;
   organismAbortController = new AbortController();
   const selector = document.querySelector("#organism-select");
   selector.value = ORGANISM.id;

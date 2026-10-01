@@ -6,7 +6,9 @@ A static web app for exploring Arabidopsis, E. coli and human docking results ac
 
 ## Organism configuration and isolation
 
-`js/organisms.js` is loaded before all other app scripts. It defines display names, result roots, annotation paths, identifier columns, locus normalization and description fields. Missing, unknown or invalid `organism` URL values resolve to E. coli. Use `?organism=arabidopsis` for Arabidopsis or `?organism=human` for Human; the app preserves this parameter when updating filters and changing tabs. Explicit `?organism=ecoli` links also work; the default organism parameter may be omitted when updating the URL.
+`js/organisms.js` defines display names, result roots, annotation paths, identifier columns, locus normalization, description fields and home-screen summaries. Missing, unknown or invalid `organism` URL values show the organism selection home screen. Use `?organism=arabidopsis`, `?organism=ecoli` or `?organism=human` to open an atlas directly; the app always preserves the organism parameter when updating filters and changing tabs.
+
+`index.html` initially loads only the organism configuration and `js/bootstrap.js`. Without a valid organism, bootstrap builds the home-screen cards from the configuration and leaves the atlas hidden; it does not load atlas scripts, manifests, scores, annotations or viewer assets. Each card navigates to the same page with the selected organism parameter, preserving existing query filters and the requested tab. With a valid organism, bootstrap reveals the atlas, initializes its header and loads the existing classic scripts in their original order; `app.js` then starts the normal data loader. The header remains usable while scripts or datasets load. **Choose organism** returns to the home screen and cancels active dataset requests. Script download errors display a startup error with refresh guidance, while the header still provides organism navigation. No build step or framework is added.
 
 | Resource | Arabidopsis | E. coli | Human |
 | --- | --- | --- | --- |
