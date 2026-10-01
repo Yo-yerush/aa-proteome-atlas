@@ -58,6 +58,7 @@ These are the default app settings; they can be changed in the relevant tab.
 | Competitive AAs maximum | 19 in Explorer and GO | Initially unrestricted; lower values narrow the selected protein set. |
 | L>D | Off | Require the L-AA to score better than its matching D-AA. |
 | Control QC chain compatibility | Monomer-compatible only | Include only GOLD representatives classified as monomer-compatible; All retains every eligible representative. |
+| Control QC biological assembly | All | Monomeric biological assembly only requires `ultra_strict_monomer_pass = 1` in the GOLD table, independently of binding-site compatibility. |
 | Protein-profile plot | Combined 50%, best-to-worst score order; normalization off | Change Value type, ordering or AA-normalized Z-score independently of the Explorer ranking score. |
 
 Quality filters apply **before best-pocket selection and ranking**. Protein profile and AA matrix share Explorer’s quality thresholds; Compare AAs, Top-hit overlap, GO, Control QC and Statistics have their own analysis settings.
@@ -118,6 +119,8 @@ FDR refers to the **GO enrichment tests**, not to the probability that a docking
 Control QC compares Vina, SFCT and both Combined scores against known AA–protein controls. Curves show cumulative recovery versus top proteome percentile, with Top 1%, 5% and 10% summaries and an illustrative random-reference diagonal.
 
 Each organism's `binding_site_chain_compatibility.tsv` annotates the existing strict GOLD representatives by exact AA, accession, PDB, ligand instance and protein chain. **Monomer-compatible only** is the default; **All** also includes complex-dependent, uncertain and unavailable classifications. This filter applies to control counts, both recovery denominators, site coverage, L/D summaries and downloads, while proteome ranking backgrounds stay unchanged. Expand a compatibility status in the table to read its curation reason. Missing compatibility cannot qualify for the default filter; All can still use the original controls. Source tables and download columns are unchanged, and download filenames record the selected filter.
+
+**Biological assembly** is a separate selector, defaulting to **All**. **Monomeric biological assembly only** requires `ultra_strict_monomer_pass = 1` on the original GOLD record; zero or unavailable classifications do not qualify. Enabling it together with Monomer-compatible only requires both conditions. Both filters apply to all Control QC summaries and downloads, with exclusions reported separately and both settings recorded in download filenames.
 
 The default is **Best-scoring pocket**, with P2Rank ≥0.7 and pLDDT ≥90. **Control-matched pocket** instead uses the predicted pocket with the largest overlap with mapped experimental-site residues; the default requirement is at least 50% coverage. The default curve denominator includes controls evaluable for all four scores; **All known controls** also includes missing or QC-excluded cases.
 

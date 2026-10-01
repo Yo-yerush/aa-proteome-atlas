@@ -9,14 +9,15 @@ const CONTROL_QC_METRICS = [
 ];
 const CONTROL_QC_POCKET_MODES = { best: "Best-scoring pocket", matched: "Control-matched pocket" };
 const CONTROL_QC_CHAIN_FILTERS = { monomer: "Monomer-compatible only", all: "All" };
+const CONTROL_QC_ASSEMBLY_FILTERS = { all: "All biological assemblies", monomer: "Monomeric biological assembly only" };
 const CONTROL_QC_CHAIN_LABELS = { monomer_compatible: "Monomer-compatible", complex_dependent: "Complex-dependent", uncertain: "Uncertain" };
-const controlQCState = { aa: "ALL", chainFilter: "monomer", denominator: "eligible", pocketMode: "best", overlap: "50", p2: 0.7, plddt: 90 };
+const controlQCState = { aa: "ALL", chainFilter: "monomer", assemblyFilter: "all", denominator: "eligible", pocketMode: "best", overlap: "50", p2: 0.7, plddt: 80 };
 const controlQCTableState = { sort: null, direction: 1 };
 const CONTROL_QC_TABLE_SORTS = {
   protein: { label: "Protein", value: (row) => row.protein },
   aa: { label: "AA", value: (row) => row.aa },
   pdb: { label: "PDB ID", value: (row) => row.pdb },
-  compatibility: { label: "Chain compatibility", value: (row) => row.compatibility?.chain_compatibility },
+  compatibility: { label: "Binding-site compatibility", value: (row) => row.compatibility?.chain_compatibility },
   ...Object.fromEntries(CONTROL_QC_METRICS.flatMap(({ id, label }, i) => [
     [id, { label: `${label} percentile`, value: (row) => row.percentiles[i] }],
     [`stereo_${id}`, { label: `${label} L/D delta`, value: (row) => row.stereo[i]?.delta, descending: true }],
@@ -139,10 +140,13 @@ async function loadControlQCData() {
   return controlQCDataPromise;
 }
 
-function controlQCFilteredControls(data, chainFilter = "monomer") {
-  if (chainFilter === "all") return data.controls;
-  if (data.compatibilityError) throw new Error(`Chain compatibility unavailable: ${data.compatibilityError} Select All under Chain compatibility to use the original GOLD controls, or retry.`);
-  return data.controls.filter((control) => control.compatibility?.chain_compatibility === "monomer_compatible");
+function controlQCFilteredControls(data, { chainFilter = "monomer", assemblyFilter = "all" } = {}) {
+  if (chainFilter !== "all" && data.compatibilityError) {
+    throw new Error(`Chain compatibility unavailable: ${data.compatibilityError} Select All under Binding-site compatibility to evaluate GOLD controls without that restriction, or retry.`);
+  }
+  return data.controls.filter((control) =>
+    (chainFilter === "all" || control.compatibility?.chain_compatibility === "monomer_compatible")
+    && (assemblyFilter === "all" || control.source.ultra_strict_monomer_pass === "1"));
 }
 
 function controlQCPocket(row) {
@@ -197,11 +201,13 @@ function controlQCPocketPercentile(ranking, row, metric) {
 }
 
 function calculateControlQC(data, options) {
-  const mode = options.pocketMode || "best", threshold = options.overlap || "50", chainFilter = options.chainFilter || "monomer";
-  const index = controlQCSourceIndex(data), key = [options.aa, options.p2, options.plddt, mode, threshold, chainFilter].join("|");
+  const mode = options.pocketMode || "best", threshold = options.overlap || "50";
+  const chainFilter = options.chainFilter || "monomer", assemblyFilter = options.assemblyFilter || "all";
+  const index = controlQCSourceIndex(data), key = [options.aa, options.p2, options.plddt, mode, threshold, chainFilter, assemblyFilter].join("|");
   if (controlQCCache.has(key)) return controlQCCache.get(key);
   const aaControls = data.controls.filter((control) => options.aa === "ALL" || control.aa === options.aa);
-  const controls = controlQCFilteredControls(data, chainFilter).filter((control) => options.aa === "ALL" || control.aa === options.aa);
+  const chainControls = controlQCFilteredControls(data, { chainFilter }).filter((control) => options.aa === "ALL" || control.aa === options.aa);
+  const controls = controlQCFilteredControls(data, { chainFilter, assemblyFilter }).filter((control) => options.aa === "ALL" || control.aa === options.aa);
   const rankings = new Map(), dRankings = new Map();
   for (const aa of new Set(controls.map((control) => control.aa))) {
     rankings.set(aa, CONTROL_QC_METRICS.map(({ key: metric }) => qualityRanking(aa, { ...options, metric })));
@@ -245,9 +251,11 @@ function calculateControlQC(data, options) {
     return { ...control, percentiles, scoreRows, populations: aaRankings.map((ranking) => ranking.rows.length), eligible,
       dockingStatus, mapped, candidate, matched, matchStatus, scoreOverlaps, stereo };
   });
-  const result = { rows, options: { aa: options.aa, p2: options.p2, plddt: options.plddt, pocketMode: mode, overlap: threshold, chainFilter },
-    excluded: data.excluded, chainExcluded: aaControls.length - controls.length,
-    chainUnavailable: aaControls.filter((control) => !control.compatibility).length };
+  const result = { rows, options: { aa: options.aa, p2: options.p2, plddt: options.plddt, pocketMode: mode, overlap: threshold, chainFilter, assemblyFilter },
+    excluded: data.excluded, chainExcluded: aaControls.length - chainControls.length,
+    assemblyExcluded: chainControls.length - controls.length,
+    chainUnavailable: aaControls.filter((control) => !control.compatibility).length,
+    assemblyUnavailable: aaControls.filter((control) => !["0", "1"].includes(control.source.ultra_strict_monomer_pass)).length };
   if (controlQCCache.size >= 4) controlQCCache.delete(controlQCCache.keys().next().value);
   controlQCCache.set(key, result);
   return result;
@@ -291,7 +299,7 @@ function controlQCCaptured(overlap, threshold) {
 }
 
 function controlQCChart(recovery) {
-  if (!recovery.n) return '<p class="analysis-empty">No controls in this denominator. Adjust the chain compatibility filter, lower the quality thresholds or choose All known controls.</p>';
+  if (!recovery.n) return '<p class="analysis-empty">No controls in this denominator. Adjust the binding-site compatibility or biological assembly filters, lower the quality thresholds or choose All known controls.</p>';
   const width = 610, height = 412, left = 66, top = 24, plotWidth = 516, plotHeight = 264;
   const x = (value) => left + plotWidth * value / 100, y = (value) => top + plotHeight * (1 - value / 100);
   const ticks = [0, 20, 40, 60, 80, 100];
@@ -359,8 +367,8 @@ function renderControlQCTable(result, options = controlQCState) {
   const stereoHeader = `<th scope="col" aria-sort="${selected?.startsWith("stereo_") ? sortDirection : "none"}">L/D Δ (D − L)<div class="control-qc-site-sorts">${CONTROL_QC_METRICS.map(({ id, label }) => sortButton(`stereo_${id}`, label)).join("")}</div></th>`;
   $("#control-qc-head").innerHTML = `<tr>${["protein", "pdb", "aa", "compatibility", ...CONTROL_QC_METRICS.map(({ id }) => id), "docking"].map(header).join("")}${stereoHeader}<th scope="col" aria-sort="${selected?.startsWith("site_") ? sortDirection : "none"}">Analyzed-site coverage<div class="control-qc-site-sorts">${CONTROL_QC_METRICS.map(({ id, label }) => sortButton(`site_${id}`, label)).join("")}</div></th>${header("match")}<th scope="col"><span class="sr-only">Protein profile</span></th></tr>`;
   const rows = controlQCOrderedRows(result, options);
-  $("#control-qc-table-note").textContent = `Showing ${rows.length} of ${result.rows.length} controls for the selected AA set and chain compatibility filter, using the same denominator as the recovery plot. Expand a chain compatibility status to see the representative and curation reason. ${options.denominator === "all" ? "All known controls includes unmatched, QC-excluded and missing results after the chain filter, as shown in the plot denominator." : "Only controls with usable scores for all four metrics after the selected pocket mode and quality filters are shown."}`;
-  $("#control-qc-body").innerHTML = rows.map((row) => `<tr><td>${proteinTableIdentity(row.protein)}</td><td>${controlQCPDBLink(row.pdb)}</td><td>${escapeHTML(row.aa)}</td>${controlQCCompatibilityCell(row)}${row.percentiles.map((p, i) => `<td>${Number.isFinite(p) ? `${fmt(p, 2)}%<small class="analysis-gene">${escapeHTML(pocketLabel(row.scoreRows[i]))} · score ${fmt(row.scoreRows[i][CONTROL_QC_METRICS[i].key])}</small>` : "—"}</td>`).join("")}<td>${escapeHTML(row.dockingStatus)}</td>${controlQCStereoCell(row)}<td>${row.scoreOverlaps.map((overlap, i) => `<small class="analysis-gene">${CONTROL_QC_METRICS[i].label}: ${overlap ? `${fmt(100 * overlap.fraction, 1)}% (${overlap.hits.length}/${row.positions.length})` : "Unavailable"}</small>`).join("")}</td><td>${row.matched ? `${escapeHTML(pocketLabel(row.matched.row))} · ${fmt(100 * row.matched.fraction, 1)}%` : "—"}<small class="analysis-gene">${escapeHTML(row.matchStatus)}</small></td><td>${controlQCProfileButton(row)}</td></tr>`).join("") || '<tr><td colspan="13" class="analysis-empty">No controls match the current chain filter, QC settings and recovery denominator.</td></tr>';
+  $("#control-qc-table-note").textContent = `Showing ${rows.length} of ${result.rows.length} controls for the selected AA set, binding-site compatibility and biological assembly filters, using the same denominator as the recovery plot. Expand a binding-site compatibility status to see the representative and curation reason. ${options.denominator === "all" ? "All known controls includes unmatched, QC-excluded and missing results after both filters, as shown in the plot denominator." : "Only controls with usable scores for all four metrics after the selected pocket mode and quality filters are shown."}`;
+  $("#control-qc-body").innerHTML = rows.map((row) => `<tr><td>${proteinTableIdentity(row.protein)}</td><td>${controlQCPDBLink(row.pdb)}</td><td>${escapeHTML(row.aa)}</td>${controlQCCompatibilityCell(row)}${row.percentiles.map((p, i) => `<td>${Number.isFinite(p) ? `${fmt(p, 2)}%<small class="analysis-gene">${escapeHTML(pocketLabel(row.scoreRows[i]))} · score ${fmt(row.scoreRows[i][CONTROL_QC_METRICS[i].key])}</small>` : "—"}</td>`).join("")}<td>${escapeHTML(row.dockingStatus)}</td>${controlQCStereoCell(row)}<td>${row.scoreOverlaps.map((overlap, i) => `<small class="analysis-gene">${CONTROL_QC_METRICS[i].label}: ${overlap ? `${fmt(100 * overlap.fraction, 1)}% (${overlap.hits.length}/${row.positions.length})` : "Unavailable"}</small>`).join("")}</td><td>${row.matched ? `${escapeHTML(pocketLabel(row.matched.row))} · ${fmt(100 * row.matched.fraction, 1)}%` : "—"}<small class="analysis-gene">${escapeHTML(row.matchStatus)}</small></td><td>${controlQCProfileButton(row)}</td></tr>`).join("") || '<tr><td colspan="13" class="analysis-empty">No controls match the current binding-site and biological assembly filters, QC settings and recovery denominator.</td></tr>';
 }
 
 function renderControlQCResults(result, options) {
@@ -368,7 +376,7 @@ function renderControlQCResults(result, options) {
   const recovery = controlQCRecovery(result, options.denominator), eligible = result.rows.filter((row) => row.eligible).length;
   $("#control-qc-chart").innerHTML = controlQCChart(recovery);
   $("#control-qc-summary").innerHTML = recovery.curves.map((curve) => `<tr><th><span class="control-qc-key" style="--qc-color:${curve.color}"></span>${curve.label}</th>${curve.counts.map((count) => `<td>${controlQCFraction(count, recovery.n)}</td>`).join("")}</tr>`).join("");
-  $("#control-qc-coverage").textContent = `${CONTROL_QC_CHAIN_FILTERS[result.options.chainFilter]} · ${CONTROL_QC_POCKET_MODES[result.options.pocketMode]} · ${result.rows.length} known controls · ${eligible} eligible for all four scores · ${result.rows.length - eligible} unmatched, missing a score or excluded by QC. Recovery denominator: ${recovery.n}. Chain filter excluded ${result.chainExcluded} controls; compatibility unavailable for ${result.chainUnavailable} original controls in the selected AA set. Percentages count AA–protein pairs, not unique proteins.${result.excluded ? ` ${result.excluded} source rows excluded as ineligible or noncanonical.` : ""}`;
+  $("#control-qc-coverage").textContent = `Binding site: ${CONTROL_QC_CHAIN_FILTERS[result.options.chainFilter]} · ${CONTROL_QC_ASSEMBLY_FILTERS[result.options.assemblyFilter]} · ${CONTROL_QC_POCKET_MODES[result.options.pocketMode]} · ${result.rows.length} known controls · ${eligible} eligible for all four scores · ${result.rows.length - eligible} unmatched, missing a score or excluded by QC. Recovery denominator: ${recovery.n}. Binding-site filter excluded ${result.chainExcluded} controls; assembly filter excluded ${result.assemblyExcluded} additional controls. Compatibility unavailable for ${result.chainUnavailable}, assembly classification unavailable for ${result.assemblyUnavailable} original controls in the selected AA set. Percentages count AA–protein pairs, not unique proteins.${result.excluded ? ` ${result.excluded} source rows excluded as ineligible or noncanonical.` : ""}`;
   const modeNote = result.options.pocketMode === "matched"
     ? "Each control uses the pocket most closely matching its experimental residues, chosen without docking scores. Its score is placed among other proteins’ best-pocket scores; the control’s own best score is excluded. This is known-site-conditioned QC, not blind pocket selection."
     : "Each control uses its best quality-passing pocket independently for Vina, SFCT, Combined 80% and Combined 50%.";
@@ -396,7 +404,7 @@ async function renderControlQC() {
   try {
     const data = await loadControlQCData();
     if (request !== controlQCRequest || organismLeaving) return;
-    const controls = controlQCFilteredControls(data, options.chainFilter);
+    const controls = controlQCFilteredControls(data, options);
     $("#control-qc-aa").innerHTML = analysisOptions([["ALL", `All control AAs (${controls.length})`], ...AMINO_ACIDS.map(({ code, name }) => [code, `${code} · ${name} (${controls.filter((row) => row.aa === code).length})`])], options.aa);
     const result = calculateControlQC(data, options);
     renderControlQCResults(result, options);
@@ -427,7 +435,7 @@ function downloadControlQC() {
   const rows = controlQCOrderedRows(result, options).map((row) => [row.aa, row.protein, row.pdb, result.options.pocketMode, row.dockingStatus, row.eligible, options.denominator, recovery.n, options.denominator === "all" || row.eligible,
     ...CONTROL_QC_METRICS.flatMap(({ key }, i) => [row.scoreRows[i]?.[key], row.scoreRows[i]?.pocket, row.scoreRows[i]?.protein, row.populations[i], row.percentiles[i], ...[1, 5, 10].map((tier) => Number.isFinite(row.percentiles[i]) ? row.percentiles[i] <= tier : null), row.scoreOverlaps[i]?.hits.join(";"), row.scoreOverlaps[i]?.fraction, row.scoreOverlaps[i] ? controlQCCaptured(row.scoreOverlaps[i], options.overlap) : null, siteCounts[i], row.stereo[i]?.dRow[key], row.stereo[i]?.dRow.pocket, row.stereo[i]?.dRow.protein, row.stereo[i]?.delta, row.stereo[i] ? row.stereo[i].delta > 0 : null]),
     row.matchStatus, row.positions.join(";"), options.overlap === "any" ? "at_least_one_residue" : `at_least_${options.overlap}_percent`, row.matched?.row.pocket, row.matched?.row.protein, row.matched?.hits.join(";"), row.matched?.fraction, row.mapped ? row.positions.length : null, "other_proteins_best_qc_pocket_scores", result.options.p2, result.options.plddt, CONTROL_QC_PATH]);
-  downloadText(`positive_control_qc_${options.aa}_${result.options.chainFilter === "all" ? "all" : "monomer_compatible_only"}_${result.options.pocketMode}_overlap_${options.overlap}_p2_${options.p2}_plddt_${options.plddt}.tsv`, analysisTSV(headers, rows));
+  downloadText(`positive_control_qc_${options.aa}_${result.options.chainFilter === "all" ? "all" : "monomer_compatible_only"}_${result.options.assemblyFilter === "monomer" ? "monomeric_assembly_only" : "all_assemblies"}_${result.options.pocketMode}_overlap_${options.overlap}_p2_${options.p2}_plddt_${options.plddt}.tsv`, analysisTSV(headers, rows));
 }
 
 function bindControlQCEvents() {
@@ -442,7 +450,7 @@ function bindControlQCEvents() {
     renderControlQCTable(controlQCResult.result, controlQCResult.options);
     $(`#control-qc-head [data-control-sort="${key}"]`)?.focus({ preventScroll: true });
   });
-  for (const key of ["aa", "chainFilter", "denominator", "pocketMode", "overlap", "p2", "plddt"]) {
+  for (const key of ["aa", "chainFilter", "assemblyFilter", "denominator", "pocketMode", "overlap", "p2", "plddt"]) {
     $(`#control-qc-${key}`).addEventListener("change", (event) => {
       let value = event.target.value;
       if (key === "p2" || key === "plddt") {
