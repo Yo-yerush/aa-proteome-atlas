@@ -686,6 +686,9 @@ footer .shell { min-height: 66px; display: flex; align-items: center; justify-co
 .control-qc-pdb-link:focus-visible { outline: 2px solid var(--purple); outline-offset: 3px; }
 .control-qc-site-sorts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .control-qc-site-sorts .sort-button { width: auto; font-size: 9px; }
+.control-qc-compatibility { min-width: 140px; max-width: 260px; }
+.control-qc-compatibility summary { cursor: pointer; }
+.control-qc-compatibility .analysis-gene { white-space: normal; overflow-wrap: anywhere; }
 .control-qc-retry { margin: 0 22px 18px; }
 @media (max-width: 1000px) {
   .control-qc-grid { grid-template-columns: 1fr; }
