@@ -36,7 +36,7 @@ async function bootstrapAtlas() {
       if (organismLeaving) return;
       await new Promise((resolve, reject) => {
         const script = document.createElement("script");
-        script.src = `js/${name}.js?v=organism-home-1`;
+        script.src = `js/${name}.js?v=aa-normalized-rank-1`;
         script.async = false;
         script.onload = resolve;
         script.onerror = () => reject(new Error(`Could not load js/${name}.js. Refresh the page to retry.`));

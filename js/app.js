@@ -48,7 +48,7 @@ const METRICS = {
   sfct_score: { label: "OnionNet-SFCT", short: "SFCT", digits: 3, nearWindow: 0.15 },
 };
 
-const SORT_KEYS = new Set(["protein", "pocket", "score", "qphi_kT", "aa_rank", "competitors", "percentile", "p2rank", "plddt", "delta", "z", "stereo"]);
+const SORT_KEYS = new Set(["protein", "pocket", "score", "qphi_kT", "aa_rank", "normalized_aa_rank", "competitors", "percentile", "p2rank", "plddt", "delta", "z", "stereo"]);
 
 const PROFILE_VALUES = {
   raw_combined: { label: "Combined 80%", digits: 3, metric: "vina_sfct_combined" },
@@ -389,17 +389,28 @@ function getProfileScoreSummary(aa, metric) {
   return population.profileScoreSummary;
 }
 
+function getNormalizedProfileEntry(entry, metric) {
+  const normalization = getProfileScoreSummary(entry.code, metric);
+  const usable = normalization.count >= 2 && Number.isFinite(normalization.mean)
+    && Number.isFinite(normalization.sd) && normalization.sd > 0;
+  return { ...entry, normalization,
+    plotValue: usable ? (entry[metric] - normalization.mean) / normalization.sd : NaN,
+    top5Z: usable ? (normalization.top5Score - normalization.mean) / normalization.sd : NaN };
+}
+
+function getNormalizedAARank(profile, targetAA = state.aa, metric = state.metric) {
+  const normalized = profile.map((entry) => getNormalizedProfileEntry(entry, metric))
+    .filter((entry) => Number.isFinite(entry.plotValue))
+    .sort((a, b) => a.plotValue - b.plotValue);
+  const index = normalized.findIndex((entry) => entry.code === targetAA);
+  return { rank: index >= 0 ? index + 1 : NaN, count: normalized.length };
+}
+
 function getProfilePlotData(protein, pocket = null) {
   const config = getProfileValueConfig();
-  return getProteinProfile(protein, config.metric, pocket).map((entry) => {
-    if (!config.normalized) return { ...entry, plotValue: config.percentile ? entry.proteome_percentile : entry[config.metric] };
-    const normalization = getProfileScoreSummary(entry.code, config.metric);
-    const usable = normalization.count >= 2 && Number.isFinite(normalization.mean)
-      && Number.isFinite(normalization.sd) && normalization.sd > 0;
-    return { ...entry, normalization,
-      plotValue: usable ? (entry[config.metric] - normalization.mean) / normalization.sd : NaN,
-      top5Z: usable ? (normalization.top5Score - normalization.mean) / normalization.sd : NaN };
-  });
+  return getProteinProfile(protein, config.metric, pocket).map((entry) => config.normalized
+    ? getNormalizedProfileEntry(entry, config.metric)
+    : { ...entry, plotValue: config.percentile ? entry.proteome_percentile : entry[config.metric] });
 }
 
 function getProfileNormalizationNote(profile) {
@@ -484,6 +495,7 @@ function sortValue(row, key) {
     pocket: pocketLabel(row),
     score: row[state.metric],
     aa_rank: row.comparison.target?.aa_rank,
+    normalized_aa_rank: row.normalizedAARank.rank,
     competitors: row.comparison.nearCompetitors,
     percentile: row.proteome_percentile,
     p2rank: row.probability,
@@ -573,7 +585,10 @@ function updateURL() {
 
 function filterRows() {
   const query = state.search.trim().toLowerCase();
-  const rankedProteins = getRanking().map((row) => ({ ...row, comparison: getComparison(row.uniprot_id), isBestPocket: true }));
+  const rankedProteins = getRanking().map((row) => {
+    const comparison = getComparison(row.uniprot_id);
+    return { ...row, comparison, normalizedAARank: getNormalizedAARank(comparison.profile), isBestPocket: true };
+  });
   const proteinEligible = (row) => (state.top === 100 || row.proteome_percentile <= state.top)
       && (row.comparison.target?.aa_rank ?? 99) <= state.aaRank
       && (state.minDelta === null || row.comparison.delta >= state.minDelta)
@@ -602,6 +617,7 @@ function filterRows() {
         proteome_rank: best.proteome_rank,
         proteome_percentile: best.proteome_percentile,
         comparison: best.comparison,
+        normalizedAARank: best.normalizedAARank,
         isBestPocket: samePocketGeometry(row, best),
       };
     });
@@ -699,6 +715,7 @@ function renderResults(rows) {
       <td class="numeric score-value">${fmt(row[state.metric])}</td>
       ${poseElectrostaticsCell(row)}
       <td class="numeric">${aaRank} / ${comparison.profile.length}</td>
+      <td class="numeric">${Number.isFinite(row.normalizedAARank.rank) ? `${row.normalizedAARank.rank} / ${row.normalizedAARank.count}` : "—"}</td>
       <td class="numeric">${Number.isFinite(comparison.nearCompetitors) ? `${comparison.nearCompetitors} / ${comparison.otherCount}` : "—"}</td>
       <td class="numeric"><span class="percentile-cell"><span>${fmt(percentile, 1)}%</span><i class="percentile-track"><i style="width:${Math.max(4, 100 - percentile)}%"></i></i></span></td>
       <td class="numeric">${fmt(row.probability)}</td>
@@ -1800,7 +1817,7 @@ function bindEvents() {
     if (state.sortKey === key) state.sortDirection = state.sortDirection === "asc" ? "desc" : "asc";
     else {
       state.sortKey = key;
-      state.sortDirection = key === "protein" || key === "pocket" || key === "qphi_kT" ? "asc" : "desc";
+      state.sortDirection = key === "protein" || key === "pocket" || key === "qphi_kT" || key === "normalized_aa_rank" ? "asc" : "desc";
     }
     renderExplorer();
   });
