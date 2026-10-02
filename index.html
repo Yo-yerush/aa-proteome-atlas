@@ -240,20 +240,20 @@
                 <table class="data-table" id="results-table">
                   <thead>
                     <tr>
-                      <th data-sort-header="protein" aria-sort="none"><button class="sort-button" type="button" data-sort="protein">Protein <span>↕</span></button></th>
-                      <th data-sort-header="pocket" aria-sort="none"><button class="sort-button" type="button" data-sort="pocket">Pocket <span>↕</span></button></th>
-                      <th class="numeric" data-sort-header="score" aria-sort="none"><button class="sort-button" type="button" data-sort="score">Score <span>↕</span></button></th>
+                      <th data-sort-header="protein" aria-sort="none"><button class="sort-button" type="button" data-sort="protein" title="UniProt accession and supplied gene identifiers.">Protein <span>↕</span></button></th>
+                      <th data-sort-header="pocket" aria-sort="none"><button class="sort-button" type="button" data-sort="pocket" title="Docking pocket and structure model.">Pocket <span>↕</span></button></th>
+                      <th class="numeric" data-sort-header="score" aria-sort="none"><button class="sort-button" type="button" data-sort="score" title="Selected docking score. Lower is better.">Score <span>↕</span></button></th>
                       <th class="numeric qphi-header" data-sort-header="qphi_kT" aria-sort="none" title="Charge-weighted receptor potential for Vina pose 1, not necessarily the SFCT/Combined-selected pose. Negative is favorable and positive is unfavorable in the fixed receptor field; not binding free energy. Click to sort; unavailable values stay last."><button class="sort-button" type="button" data-sort="qphi_kT">qφ (kT) <span>↕</span></button><small>Vina pose 1</small></th>
-                      <th class="numeric" data-sort-header="aa_rank" aria-sort="none"><button class="sort-button" type="button" data-sort="aa_rank">AA rank <span>↕</span></button></th>
-                      <th class="numeric" data-sort-header="normalized_aa_rank" aria-sort="none"><button class="sort-button" type="button" data-sort="normalized_aa_rank" title="Rank among available AAs after per-AA Z-score normalization. 1 is best.">AA-normalized rank <span>↕</span></button></th>
-                      <th class="numeric" data-sort-header="competitors" aria-sort="none"><button class="sort-button" type="button" data-sort="competitors">Competitive AAs <span>↕</span></button></th>
-                      <th class="numeric" data-sort-header="percentile" aria-sort="none"><button class="sort-button" type="button" data-sort="percentile">Top <span>↕</span></button></th>
-                      <th class="numeric" data-sort-header="p2rank" aria-sort="none"><button class="sort-button" type="button" data-sort="p2rank">P2Rank <span>↕</span></button></th>
-                      <th class="numeric" data-sort-header="plddt" aria-sort="none"><button class="sort-button" type="button" data-sort="plddt">pLDDT <span>↕</span></button></th>
-                      <th class="numeric" data-sort-header="delta" aria-sort="none"><button class="sort-button" type="button" data-sort="delta">Δ median <span>↕</span></button></th>
-                      <th class="numeric" data-sort-header="z" aria-sort="none"><button class="sort-button" type="button" data-sort="z">Z <span>↕</span></button></th>
-                      <th class="numeric" id="stereo-header" data-sort-header="stereo" aria-sort="none"><button class="sort-button" type="button" data-sort="stereo">L/D Δ <span>↕</span></button></th>
-                      <th><span class="sr-only">Open</span></th>
+                      <th class="numeric" data-sort-header="aa_rank" aria-sort="none"><button class="sort-button" type="button" data-sort="aa_rank" title="Rank among available AAs by raw score. 1 is best.">AA rank <span>↕</span></button></th>
+                      <th class="numeric" data-sort-header="normalized_aa_rank" aria-sort="none"><button class="sort-button" type="button" data-sort="normalized_aa_rank" title="Rank among available AAs after per-AA Z-score normalization. 1 is best.">Norm. rank <span>↕</span></button></th>
+                      <th class="numeric" data-sort-header="competitors" aria-sort="none"><button class="sort-button" type="button" data-sort="competitors" title="Other AAs with better or similar scores, using the selected metric's threshold.">Comp. AAs <span>↕</span></button></th>
+                      <th class="numeric" data-sort-header="percentile" aria-sort="none"><button class="sort-button" type="button" data-sort="percentile" title="Proteome percentile for this AA after QC. Lower % is better.">Top <span>↕</span></button></th>
+                      <th class="numeric" data-sort-header="p2rank" aria-sort="none"><button class="sort-button" type="button" data-sort="p2rank" title="P2Rank pocket prediction probability. Higher is better.">P2Rank <span>↕</span></button></th>
+                      <th class="numeric" data-sort-header="plddt" aria-sort="none"><button class="sort-button" type="button" data-sort="plddt" title="Mean AlphaFold confidence across pocket residues (0–100).">pLDDT <span>↕</span></button></th>
+                      <th class="numeric" data-sort-header="delta" aria-sort="none"><button class="sort-button" type="button" data-sort="delta" title="Other-AAs' median score minus this AA's score. Positive favors this AA.">Δ median <span>↕</span></button></th>
+                      <th class="numeric" data-sort-header="z" aria-sort="none"><button class="sort-button" type="button" data-sort="z" title="Selectivity Z relative to other AAs in this protein. Positive favors this AA.">Z <span>↕</span></button></th>
+                      <th class="numeric" id="stereo-header" data-sort-header="stereo" aria-sort="none"><button class="sort-button" type="button" data-sort="stereo" title="D-AA score minus L-AA score. Positive favors L.">L/D Δ <span>↕</span></button></th>
+                      <th title="Open the protein and pocket profile."><span class="sr-only">Open</span></th>
                     </tr>
                   </thead>
                   <tbody id="results-body"></tbody>
