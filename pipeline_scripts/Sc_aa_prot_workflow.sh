@@ -415,13 +415,13 @@ conda activate sfct
 # python -m pip install --no-build-isolation mdtraj==1.9.7
 # python -m pip install biopandas==0.2.9
 
-# # c. Download the trained SFCT model
-# mkdir -p data
+# c. Download the trained SFCT model
+mkdir -p data
 # pip install gdown
-# gdown "https://drive.google.com/uc?id=1iiJvW4GBfg4D7LCuTRLKv9qnRYu5L2o5" -O data/sfct.model
+gdown "https://drive.google.com/uc?id=1iiJvW4GBfg4D7LCuTRLKv9qnRYu5L2o5" -O data/sfct.model
 
 # d. Run SFCT for every completed amino-acid docking
-cd ../
+cd ../../
 
 for ligand in ligands/amino_acids_pdbqt/*.pdbqt
 do
@@ -483,7 +483,9 @@ python scripts/export_electrostatics.py \
     --uniprot-tsv metadata/yeast_uniprot.tsv \
     --points-dir visualizations_p2rank \
     --pdb2pqr pdb2pqr30 \
-    --jobs 8 2>&1 | tee logs/electrostatics_potential.log
+    --jobs 16 2>&1 | tee logs/electrostatics_potential.log
+
+gzip results/compact/electrostatics/manifest.json
 
 # before download to the app, also gzip the uniprot file
 gzip metadata/yeast_uniprot.tsv
