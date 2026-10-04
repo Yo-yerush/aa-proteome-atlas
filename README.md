@@ -43,6 +43,15 @@ Protein rows link to UniProt, provide gene descriptions and open the correspondi
 3. **Inspect the pocket.** Open a protein profile, inspect individual pockets, compare the 20-AA scores and examine the exported ligand poses in 3D.
 4. **Put the results in context.** Explore functional enrichment in GO analysis, compare hit lists across AAs, and review Control QC before prioritizing experimental follow-up.
 
+## Screenshots
+<p align="center">
+  <img src="assets/screenshots/explorer.png" width="32%" alt="Explorer">
+  <img src="assets/screenshots/protein-profile.png" width="32%" alt="Protein profile">
+</p>
+
+- *Filter and rank proteins for the selected organism and amino acid.*
+- *Compare amino-acid scores and inspect the predicted pocket and ligand pose.*
+
 ## Analysis settings
 
 These are the default app settings; they can be changed in the relevant tab.
@@ -136,6 +145,16 @@ The Mol* viewer combines a version-matched AlphaFold structure with the selected
 - Use **Ligand pose: Auto** to follow the profile’s Value type: Vina uses MODEL 1; SFCT/Combined use the saved selection. Manual Vina-best and saved-pose choices change the displayed ligand only—not the scores or plots.
 
 Explorer’s **qφ (kT)** is the precomputed sum of ligand charge × receptor potential for **Vina MODEL 1** in the displayed pocket. Negative values are favorable and positive values unfavorable in the fixed receptor field. It is not binding free energy and does not follow manual pose switching. Failed or unavailable values remain missing, never zero.
+
+<p align="center">
+  <img src="assets/screenshots/AF_plddt.png" width="32%" alt="PLDDT">
+  <img src="assets/screenshots/AF_pocket_surface.png" width="32%" alt="Surface">
+  <img src="assets/screenshots/AF_sticks_electrostatics.png" width="32%" alt="Sticks">
+</p>
+
+- pLDDT-colored protein with a gold `P2Rank` pocket-point cloud.
+- Surface view with the selected pocket highlighted in green.
+- Stick view with pocket points colored by receptor electrostatic potential.
 
 ## Run the app
 

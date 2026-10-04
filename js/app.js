@@ -2050,9 +2050,9 @@ async function init() {
     renderExplorer();
     const proteinCount = state.metadata.size;
     $("#release-summary").textContent = `${AMINO_ACIDS.length} amino acids · ${proteinCount} proteins`;
-    const missing = [...state.unavailableDatasets, ...DATA_LIGANDS.filter(({ code }) => !state.rawByAA.has(code)).map(({ code }) => `${code} scores`)];
-    $("#dataset-availability").hidden = !missing.length;
-    $("#dataset-availability").textContent = missing.length ? `Unavailable for ${ORGANISM.name}: ${missing.join(", ")}.` : "";
+    // const missing = [...state.unavailableDatasets, ...DATA_LIGANDS.filter(({ code }) => !state.rawByAA.has(code)).map(({ code }) => `${code} scores`)];
+    // $("#dataset-availability").hidden = !missing.length;
+    // $("#dataset-availability").textContent = missing.length ? `Unavailable for ${ORGANISM.name}: ${missing.join(", ")}.` : "";
     const requestedView = location.hash.slice(1);
     if (["explorer", "protein", "matrix", "compare", "overlap", "go", "control-qc", "statistics", "methods"].includes(requestedView) && requestedView !== "explorer") switchView(requestedView);
     updateAtlasLoadingProgress(100);
