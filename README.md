@@ -45,8 +45,8 @@ Protein rows link to UniProt, provide gene descriptions and open the correspondi
 
 ## Screenshots
 <p align="center">
-  <img src="assets/screenshots/explorer.png" width="32%" alt="Explorer">
-  <img src="assets/screenshots/protein-profile.png" width="32%" alt="Protein profile">
+  <img src="assets/screenshots/explorer.jpeg" width="40%" alt="Explorer">
+  <img src="assets/screenshots/protein-profile.jpeg" width="40%" alt="Protein profile">
 </p>
 
 - *Filter and rank proteins for the selected organism and amino acid.*
