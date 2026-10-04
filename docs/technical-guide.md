@@ -2,25 +2,25 @@
 
 Setup, data formats, testing and implementation details for AA Proteome Interaction Atlas. For the app introduction, main features and analysis settings, see the [README](../README.md). Commands below are run from the app folder, not from `docs/`.
 
-A static web app for exploring Arabidopsis, E. coli and human docking results across 20 canonical amino acids per organism. Arabidopsis and E. coli include 19 separate D-AA datasets; the human release is L-only. Glycine has no distinct L/D pair. No build step, package installation or backend is required; the optional 3D viewer loads Mol* and AlphaFold structures from external services.
+A static web app for exploring Arabidopsis, E. coli, human and yeast docking results across 20 canonical amino acids per organism. Arabidopsis and E. coli include 19 separate D-AA datasets; the human and yeast releases are L-only. Glycine has no distinct L/D pair. No build step, package installation or backend is required; the optional 3D viewer loads Mol* and AlphaFold structures from external services.
 
 ## Organism configuration and isolation
 
-`js/organisms.js` defines display names, result roots, annotation paths, identifier columns, locus normalization and description fields. Missing, unknown or invalid `organism` URL values show the organism selection home screen. Use `?organism=arabidopsis`, `?organism=ecoli` or `?organism=human` to open an atlas directly; the app always preserves the organism parameter when updating filters and changing tabs.
+`js/organisms.js` defines display names, result roots, annotation paths, identifier columns, locus normalization and description fields. Missing, unknown or invalid `organism` URL values show the organism selection home screen. Use `?organism=arabidopsis`, `?organism=ecoli`, `?organism=human` or `?organism=yeast` to open an atlas directly; the app always preserves the organism parameter when updating filters and changing tabs.
 
-`index.html` initially loads only the organism configuration and `js/bootstrap.js`. Without a valid organism, bootstrap builds the home-screen cards from the configuration and leaves the atlas hidden; it does not load atlas scripts, manifests, scores, annotations or viewer assets. Each card navigates to the same page with the selected organism parameter, preserving existing query filters and the requested tab. With a valid organism, bootstrap reveals the atlas, initializes its header and loads the existing classic scripts in their original order; `app.js` then starts the normal data loader. The header remains usable while scripts or datasets load. **Choose organism** returns to the home screen and cancels active dataset requests. Script download errors display a startup error with refresh guidance, while the header still provides organism navigation. No build step or framework is added.
+`index.html` initially loads only the organism configuration and `js/bootstrap.js`. Without a valid organism, bootstrap builds the home-screen cards from the configuration and leaves the atlas hidden; it does not load atlas scripts, manifests, scores, annotations or viewer assets. Each card navigates to the same page with the selected organism parameter, preserving existing query filters and the requested tab. With a valid organism, bootstrap reveals the atlas, initializes its header and loads the existing classic scripts in their original order; `app.js` then starts the normal data loader. The header remains usable while scripts or datasets load. Script download errors display a startup error with refresh guidance, while the header still provides organism navigation. No build step or framework is added.
 
-| Resource | Arabidopsis | E. coli | Human |
-| --- | --- | --- | --- |
-| Results root | `At_results/` | `Ec_results/` | `Hs_results/` |
-| Annotation root | `annotations/arabidopsis/` | `annotations/ecoli/` | `annotations/human/` |
-| UniProt identifiers | `arabidopsis_uniprot.tsv.gz` | `ecoli_uniprot.tsv.gz` | `human_uniprot.tsv.gz` |
-| GO mappings | `arabidopsis_uniprot_go.tsv.gz` | `ecoli_uniprot_go.tsv.gz` | `human_uniprot_go.tsv.gz` |
-| Chain compatibility | `binding_site_chain_compatibility.tsv` | `binding_site_chain_compatibility.tsv` | `binding_site_chain_compatibility.tsv` |
-| Descriptions | `At_custom_description_file.csv.gz` | `Ec_custom_description_file.csv.gz` | `Hs_custom_description_file.csv.gz` |
-| Pocket identifier field | `tair_id` | `gene_id` (locus) | `gene_id` (symbol) |
-| UniProt identifier field | `Araport` | `Gene Names (ordered locus)` | `Gene Names (primary)` |
-| Description fields | Short, gene and computational descriptions | Product, symbols, synonyms, EC number | Protein name, function, Ensembl ID, GO, KEGG |
+| Resource | Arabidopsis | E. coli | Human | Yeast |
+| --- | --- | --- | --- | --- |
+| Results root | `At_results/` | `Ec_results/` | `Hs_results/` | `Sc_results/` |
+| Annotation root | `annotations/arabidopsis/` | `annotations/ecoli/` | `annotations/human/` | `annotations/yeast/` |
+| UniProt identifiers | `arabidopsis_uniprot.tsv.gz` | `ecoli_uniprot.tsv.gz` | `human_uniprot.tsv.gz` | `yeast_uniprot.tsv.gz` |
+| GO mappings | `arabidopsis_uniprot_go.tsv.gz` | `ecoli_uniprot_go.tsv.gz` | `human_uniprot_go.tsv.gz` | `yeast_uniprot_go.tsv.gz` |
+| Chain compatibility | `binding_site_chain_compatibility.tsv` | `binding_site_chain_compatibility.tsv` | `binding_site_chain_compatibility.tsv` | `binding_site_chain_compatibility.tsv` |
+| Descriptions | `At_custom_description_file.csv.gz` | `Ec_custom_description_file.csv.gz` | `Hs_custom_description_file.csv.gz` | `Sc_custom_description_file.csv.gz` |
+| Pocket identifier field | `tair_id` | `gene_id` (locus) | `gene_id` (symbol) | `gene_id` (systematic locus) |
+| UniProt identifier field | `Araport` | `Gene Names (ordered locus)` | `Gene Names (primary)` | `Gene Names (ordered locus)` |
+| Description fields | Short, gene and computational descriptions | Product, symbols, synonyms, EC number | Protein name, function, Ensembl ID, GO, KEGG | Protein name, function, gene identifiers, localization, pathway, catalytic activity, GO, keywords |
 
 All organisms use `strict_WT_single_protein_AA_controls.tsv` for Control QC, alongside their configured `binding_site_chain_compatibility.tsv`. The nonredundant control table is supplied but is not the active source; compatibility filtering does not substitute its representatives or change source selection. E. coli description matching normalizes `b####` locus IDs to lowercase; Arabidopsis retains its TAIR transcript-to-locus mapping. Searches include supplied gene symbols, entry names and locus IDs; external protein links always use UniProt.
 
@@ -32,7 +32,11 @@ The human bundle contains 33,875 pocket metadata records for 13,799 models and 1
 
 Human result `gene_id` values are symbols, while description `gene_id` values are Ensembl IDs. `descriptionLookup` configures separate UniProt and symbol indexes. Exact accessions (including isoform suffixes) take precedence; fallback symbols must identify a single normalized Ensembl gene. Ambiguous/missing matches are unavailable. Description details are configurable, so human GO/KEGG fields do not change the other organisms' dialogs. The existing CSV parser and on-demand loading are reused.
 
-All download filenames carry the organism ID. Explorer/profile/GO protein exports use the corresponding `tair_id` or `gene_id` column. Existing Arabidopsis paths in the detailed format examples below illustrate the same layout under `Ec_results/` for E. coli and `Hs_results/` for Human; runtime paths always come from the selected configuration.
+The yeast L manifest contains 8,987 pocket metadata records and 20 score tables, with no D bundle. GO mappings, strict controls, chain compatibility, all 20 L ligand-position and pose-electrostatics tables, pocket points and receptor electrostatics are supplied. The existing loaders and scientific calculations are reused, including one best QC-passing pocket per UniProt accession for proteome references. Missing optional datasets remain unavailable within yeast.
+
+Yeast `gene_id` and UniProt ordered-locus annotations contain systematic locus IDs, including suffixed ORFs and supplied `Q`/`R` identifiers. Normalization changes case only, preserving suffixes such as `YPL060C-A`. The supplied description CSV uses `Entry` rather than `gene_id`: `descriptionLookup.identifierField` configures that required CSV identifier, and exact UniProt accessions select descriptions without a symbol fallback. Other organisms continue to require `gene_id` and retain their existing matching rules. Yeast dialogs display the supplied protein names, functions, gene names, subcellular locations, pathways, catalytic activity, GO terms and keywords; the source CSV is not transformed or rewritten.
+
+All download filenames carry the organism ID. Explorer/profile/GO protein exports use the corresponding `tair_id` or `gene_id` column. Existing Arabidopsis paths in the detailed format examples below illustrate the same layout under `Ec_results/` for E. coli, `Hs_results/` for Human and `Sc_results/` for Yeast; runtime paths always come from the selected configuration.
 
 Run `node --test tests/*.test.cjs` for regression checks, including real-file checks in `tests/organisms.test.cjs`. The optional `tests/organism-browser-smoke.cjs` checks all tabs, downloads, both switching directions, rapid switches, mobile layout and forced optional-file 404s against a local server. It uses Node 22+ and a local Chromium/Edge debugging endpoint (default port 9222); start the browser with an isolated temporary profile and software WebGL when running headlessly. Set `ATLAS_URL` or `ATLAS_CDP_URL` to override defaults. Screenshots and downloads go into the OS temporary directory.
 
@@ -48,7 +52,7 @@ Then open <http://127.0.0.1:8765/>. Double-clicking `index.html` is no longer su
 
 ## GitHub Pages
 
-Publish this folder as a GitHub Pages site, keeping `index.html`, `js/`, `css/`, `assets/`, `At_results/`, `Ec_results/`, `Hs_results/`, `annotations/arabidopsis/`, `annotations/ecoli/` and `annotations/human/` together. The Arabidopsis annotation files used by the app are listed below; publish the E. coli and human equivalents from the configuration table above as well:
+Publish this folder as a GitHub Pages site, keeping `index.html`, `js/`, `css/`, `assets/`, `At_results/`, `Ec_results/`, `Hs_results/`, `Sc_results/`, `annotations/arabidopsis/`, `annotations/ecoli/`, `annotations/human/` and `annotations/yeast/` together. The Arabidopsis annotation files used by the app are listed below; publish the E. coli, human and yeast equivalents from the configuration table above as well:
 
 - `arabidopsis_uniprot.tsv.gz`: protein/gene identifiers, loaded at startup.
 - `At_custom_description_file.csv.gz`: gene-description dialogs, loaded on demand.

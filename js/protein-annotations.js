@@ -1,5 +1,6 @@
 // On-demand local descriptions, shared by every protein-row table.
 const GENE_DESCRIPTION_PATH = ORGANISM.descriptions;
+const GENE_DESCRIPTION_ID_FIELD = ORGANISM.descriptionLookup?.identifierField || "gene_id";
 const GENE_DESCRIPTION_FIELDS = ORGANISM.descriptionFields;
 const GENE_DETAIL_FIELDS = ORGANISM.descriptionDetailFields || [
   ["note", "Notes"], ["Protein.families", "Protein families"], ["EC_number", "EC number"],
@@ -41,8 +42,8 @@ function parseGeneDescriptionCSV(text) {
     rowNumber++;
     if (!headers) {
       headers = values.map((value) => value.trim().replace(/^\uFEFF/, ""));
-      if (!headers.includes("gene_id") || !GENE_DESCRIPTION_FIELDS.some(([name]) => headers.includes(name))) {
-        throw new Error("The annotation CSV must contain gene_id and a description column.");
+      if (!headers.includes(GENE_DESCRIPTION_ID_FIELD) || !GENE_DESCRIPTION_FIELDS.some(([name]) => headers.includes(name))) {
+        throw new Error(`The annotation CSV must contain ${GENE_DESCRIPTION_ID_FIELD} and a description column.`);
       }
     } else {
       if (values.length !== headers.length) throw new Error(`Unexpected column count in annotation CSV record ${rowNumber}.`);
@@ -50,7 +51,9 @@ function parseGeneDescriptionCSV(text) {
         const value = values[index].trim();
         return [header, /^(?:NA|N\/A|null|nan)$/i.test(value) ? "" : value];
       }));
-      const geneIds = organismGeneIds(row.gene_id);
+      const geneIds = ORGANISM.descriptionLookup?.identifierField
+        ? [row[GENE_DESCRIPTION_ID_FIELD]].filter(Boolean)
+        : organismGeneIds(row[GENE_DESCRIPTION_ID_FIELD]);
       for (const id of geneIds) {
         add(id, row);
       }
@@ -84,17 +87,20 @@ function parseGeneDescriptionCSV(text) {
 }
 
 function matchingGeneDescriptions(protein, ids, records) {
-  if (!ORGANISM.descriptionLookup) return new Map(ids.map((id) => [id, records.get(id) || []]));
+  const lookup = ORGANISM.descriptionLookup;
+  if (!lookup) return new Map(ids.map((id) => [id, records.get(id) || []]));
+  const identifier = (row) => lookup.identifierField ? row[GENE_DESCRIPTION_ID_FIELD]
+    : ORGANISM.normalizeGene(row[GENE_DESCRIPTION_ID_FIELD]);
   // Exact accessions are authoritative, including isoform suffixes. Symbols may
   // bridge differing annotation exports only when they identify a single gene.
-  let matches = records.get(`uniprot:${protein}`);
-  if (!matches?.length) {
+  let matches = records.get(`uniprot:${protein}`) || [];
+  if (!matches.length && lookup.symbolField) {
     matches = [...new Set(ids.flatMap((id) => records.get(id) || records.get(`symbol:${id}`) || []))];
-    if (new Set(matches.map((row) => ORGANISM.normalizeGene(row.gene_id))).size !== 1) matches = [];
+    if (new Set(matches.map(identifier)).size !== 1) matches = [];
   }
   const selected = new Map();
   for (const row of matches) {
-    const id = ORGANISM.normalizeGene(row.gene_id);
+    const id = identifier(row);
     if (!selected.has(id)) selected.set(id, []);
     selected.get(id).push(row);
   }

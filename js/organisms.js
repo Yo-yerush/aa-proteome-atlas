@@ -44,6 +44,24 @@ const ORGANISMS = Object.freeze({
       ["GO_biological_process", "GO biological process"], ["GO_molecular_function", "GO molecular function"],
       ["GO_cellular_component", "GO cellular component"], ["KEGG_pathway", "KEGG pathway"]],
   }),
+  yeast: Object.freeze({
+    id: "yeast", name: "Yeast", scientificName: "Saccharomyces cerevisiae",
+    resultsDirectory: "Sc_results",
+    annotations: "annotations/yeast/yeast_uniprot.tsv.gz",
+    descriptions: "annotations/yeast/Sc_custom_description_file.csv.gz",
+    go: "annotations/yeast/yeast_uniprot_go.tsv.gz",
+    controls: "annotations/yeast/strict_WT_single_protein_AA_controls.tsv",
+    chainCompatibility: "annotations/yeast/binding_site_chain_compatibility.tsv",
+    rowIdentifier: "gene_id", annotationIdentifier: "Gene Names (ordered locus)", identifierLabel: "Systematic locus ID",
+    genePattern: /\b(?:Y[A-P][LR]\d{3}[CW](?:-[A-Z])?|Q\d{4}|R\d{4}[CW])\b/gi,
+    normalizeGene: (id) => id.toUpperCase(),
+    descriptionLookup: { proteinField: "Entry", identifierField: "Entry", identifierLabel: "UniProt accession" },
+    descriptionFields: [["Protein names", "Protein name"], ["Function [CC]", "Function"]],
+    descriptionDetailFields: [["Gene Names (primary)", "Gene symbol"], ["Gene Names", "Gene names and identifiers"],
+      ["Subcellular location [CC]", "Subcellular location"], ["Pathway", "Pathway"], ["Catalytic activity", "Catalytic activity"],
+      ["Gene Ontology (molecular function)", "GO molecular function"], ["Gene Ontology (biological process)", "GO biological process"],
+      ["Gene Ontology (cellular component)", "GO cellular component"], ["Keywords", "Keywords"]],
+  }),
 });
 
 function resolveOrganism(search = globalThis.location?.search || "") {
