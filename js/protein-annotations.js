@@ -1,6 +1,7 @@
 // On-demand local descriptions, shared by every protein-row table.
 const GENE_DESCRIPTION_PATH = ORGANISM.descriptions;
 const GENE_DESCRIPTION_ID_FIELD = ORGANISM.descriptionLookup?.identifierField || "gene_id";
+const GENE_DESCRIPTION_HEADING_FIELD = ORGANISM.descriptionHeadingField;
 const GENE_DESCRIPTION_FIELDS = ORGANISM.descriptionFields;
 const GENE_DETAIL_FIELDS = ORGANISM.descriptionDetailFields || [
   ["note", "Notes"], ["Protein.families", "Protein families"], ["EC_number", "EC number"],
@@ -125,14 +126,37 @@ async function loadGeneDescriptions() {
   return geneDescriptionsPromise;
 }
 
+function formatGeneDescriptionValue(key, value) {
+  if (key === "Function [CC]") {
+    return value.replace(/\bFUNCTION:[ \t]*/gi, "")
+      .replace(/(\([^()]*\bPubMed:\d+[^()]*\)|\{[^{}]*\bPubMed:\d+[^{}]*\})([.,;:]?)[ \t]*(?:\r?\n)?/gi, "$1$2\n").trimEnd();
+  }
+  if (key === "Catalytic activity") {
+    const reactions = value.match(/CATALYTIC ACTIVITY:\s*Reaction=[^;]+/g);
+    const text = reactions ? reactions.map((reaction) => reaction.trim()).join("\n") : value;
+    return text.replace(/\bCATALYTIC ACTIVITY:[ \t]*/gi, "");
+  }
+  if (key === "Subcellular location [CC]") {
+    return value.replace(/\bSUBCELLULAR LOCATION:[ \t]*/gi, "");
+  }
+  if (key === "Pathway") {
+    return value.split(/(?:;\s*)?\bPATHWAY:\s*/i).map((pathway) => pathway.trim()).filter(Boolean).join("\n");
+  }
+  if (key === "Keywords" || key === "Protein names") {
+    return value.split(";").map((item) => item.trim()).filter(Boolean).join("\n");
+  }
+  return value;
+}
+
 function geneDescriptionSections(ids, records) {
   return ids.map((id) => {
     const matches = records.get(id);
     if (!matches?.length) return `<section class="gene-description-record"><h3>${escapeHTML(id)}</h3><p class="gene-description-missing">No matching description is available in the annotation file.</p></section>`;
     return matches.map((record) => {
+      const heading = record[GENE_DESCRIPTION_HEADING_FIELD] || id;
       const descriptions = GENE_DESCRIPTION_FIELDS.filter(([key]) => record[key]);
-      const details = GENE_DETAIL_FIELDS.filter(([key]) => record[key]);
-      const fields = (items) => items.map(([key, label]) => `<div><dt><strong>${escapeHTML(label)}</strong></dt><dd>${escapeHTML(record[key])}</dd></div>`).join("");
+      const details = GENE_DETAIL_FIELDS.filter(([key]) => record[key] && key !== GENE_DESCRIPTION_HEADING_FIELD);
+      const fields = (items) => items.map(([key, label]) => `<div><dt><strong>${escapeHTML(label)}</strong></dt><dd>${escapeHTML(formatGeneDescriptionValue(key, record[key]))}</dd></div>`).join("");
       const seenSymbols = new Set([String(record.Symbol || "").trim().toLowerCase()]);
       const aliases = String(record.old_symbols || record.gene_synonym || "").split(/[\s,;|]+/).filter((symbol) => {
         const key = symbol.toLowerCase();
@@ -141,7 +165,7 @@ function geneDescriptionSections(ids, records) {
         return true;
       });
       const otherSymbols = aliases.length ? `<span class="gene-description-aliases"><strong>Other symbols:</strong> ${escapeHTML(aliases.join(" "))}</span>` : "";
-      return `<section class="gene-description-record"><h3>${escapeHTML(id)}${record.Symbol ? `<span>${escapeHTML(record.Symbol)}</span>` : ""}${otherSymbols}</h3>${descriptions.length ? "" : '<p class="gene-description-missing">No description text is available for this gene.</p>'}${descriptions.length || details.length ? `<dl class="gene-description-fields">${fields([...descriptions, ...details])}</dl>` : ""}</section>`;
+      return `<section class="gene-description-record"><h3>${escapeHTML(heading)}${record.Symbol ? `<span>${escapeHTML(record.Symbol)}</span>` : ""}${otherSymbols}</h3>${descriptions.length ? "" : '<p class="gene-description-missing">No description text is available for this gene.</p>'}${descriptions.length || details.length ? `<dl class="gene-description-fields">${fields([...descriptions, ...details])}</dl>` : ""}</section>`;
     }).join("");
   }).join("");
 }
@@ -151,7 +175,8 @@ async function openGeneDescriptions(protein, ids, opener) {
   const request = ++geneDescriptionRequest;
   geneDescriptionOpener = opener;
   const canLookup = ids.length > 0 || Boolean(ORGANISM.descriptionLookup);
-  $("#gene-description-title").textContent = `${protein} · ${ORGANISM.name} gene descriptions`;
+  const heading = state.annotations.get(protein)?.[GENE_DESCRIPTION_HEADING_FIELD] || protein;
+  $("#gene-description-title").textContent = `${heading} · ${ORGANISM.name} gene descriptions`;
   $("#gene-description-ids").textContent = ids.length ? `${ORGANISM.identifierLabel}: ${ids.join(" · ")}` : `No mapped ${ORGANISM.identifierLabel}`;
   body.setAttribute("aria-busy", canLookup ? "true" : "false");
   body.innerHTML = `<p class="gene-description-missing">${canLookup ? "Loading gene descriptions…" : `Unavailable — no ${ORGANISM.identifierLabel} is mapped to this protein in the result or UniProt annotation files.`}</p>`;
@@ -165,6 +190,10 @@ async function openGeneDescriptions(protein, ids, opener) {
         : '<p class="gene-description-missing">Unavailable — no unambiguous matching description was found in the supplied annotations.</p>';
       if (ORGANISM.descriptionLookup && selected.size) {
         $("#gene-description-ids").textContent = `${ORGANISM.descriptionLookup.identifierLabel}: ${[...selected.keys()].join(" · ")}`;
+      }
+      if (GENE_DESCRIPTION_HEADING_FIELD && selected.size) {
+        const headings = [...new Set([...selected.values()].flat().map((record) => record[GENE_DESCRIPTION_HEADING_FIELD] || protein))];
+        $("#gene-description-title").textContent = `${headings.join(" · ")} · ${ORGANISM.name} gene descriptions`;
       }
     }
   } catch (error) {
